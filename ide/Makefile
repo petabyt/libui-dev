@@ -13,5 +13,10 @@ demo.h: test.lua
 	xxd -i test.lua > demo.h
 test.o: demo.h
 
+appimage:
+	mv test.out ide
+	linuxdeploy --appdir=AppDir --executable=ide -d ide.desktop -i libui.png
+	appimagetool AppDir
+
 clean:
 	rm *.o *.out

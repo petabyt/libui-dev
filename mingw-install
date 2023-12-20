@@ -1,0 +1,11 @@
+# Script to get a mingw package and install it to Linux/WSL
+package_url=https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-lua-5.4.6-2-any.pkg.tar.zst
+temp_dir=$(mktemp -d)
+cd "$temp_dir"
+curl -L -O "$package_url"
+tar -xvf mingw-w64-x86_64-lua-5.4.6-2-any.pkg.tar.zst
+
+sudo cp -r mingw64/lib/* /usr/x86_64-w64-mingw32/lib
+sudo cp -r mingw64/include/* /usr/x86_64-w64-mingw32/include
+#cd
+#rm -r "$temp_dir"

@@ -23,6 +23,14 @@ build: libui_win64.a
 	cp $(LIBUI)/ui.h build/ui.h
 	cp libui_win64.a build/libui_win64.a
 
+IDE_FILES=ide/libuilua.w.o ide/test.w.o
+CFLAGS+=-I/usr/x86_64-w64-mingw32/include
+ide.exe: $(IDE_FILES) libui_win64.a ide/ide.res
+	$(CC) $(IDE_FILES) libui_win64.a /usr/x86_64-w64-mingw32/lib/liblua.a ide/ide.res $(LIBS) -o ide.exe
+
+ide/ide.res: ide/a.rc
+	x86_64-w64-mingw32-windres -I$(LIBUI)/windows ide/a.rc -O coff -o ide/ide.res
+
 # Test
 win.res: example/a.rc
 	x86_64-w64-mingw32-windres -I$(LIBUI)/windows example/a.rc -O coff -o win.res
