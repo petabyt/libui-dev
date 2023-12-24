@@ -7,9 +7,11 @@ O_FILES:=$(O_FILES:.o=.$(TARGET).o)
 CPP=x86_64-w64-mingw32-c++
 CC=x86_64-w64-mingw32-gcc
 
+# Yes, lots of libs required
 LIBS=-luser32 -lkernel32 -lgdi32 -lcomctl32 -luxtheme -lmsimg32 -lcomdlg32 -ld2d1 -ldwrite -lole32 -loleaut32 -loleacc
-LIBS+=-lstdc++ -lgcc -static -s -lpthread -lssp
-LIBS+=-lurlmon -luuid
+LIBS+=-lstdc++ -lgcc -static -s -lpthread -lssp -lurlmon -luuid
+
+CFLAGS+=-Ilibui-ng/windows
 
 LDFLAGS=$(LIBS)
 
@@ -26,7 +28,7 @@ build: libui_win64.a
 IDE_FILES=ide/libuilua.w.o ide/test.w.o
 CFLAGS+=-I/usr/x86_64-w64-mingw32/include
 ide.exe: $(IDE_FILES) libui_win64.a ide/ide.res
-	$(CC) $(IDE_FILES) libui_win64.a /usr/x86_64-w64-mingw32/lib/liblua.a ide/ide.res $(LIBS) -o ide.exe
+	$(CC) $(IDE_FILES) libui_win64.a /usr/x86_64-w64-mingw32/lib/liblua.a ide/ide.res $(LIBS) -Wl,-subsystem,windows -o ide.exe
 
 ide/ide.res: ide/a.rc
 	x86_64-w64-mingw32-windres -I$(LIBUI)/windows ide/a.rc -O coff -o ide/ide.res
@@ -34,5 +36,12 @@ ide/ide.res: ide/a.rc
 # Test
 win.res: example/a.rc
 	x86_64-w64-mingw32-windres -I$(LIBUI)/windows example/a.rc -O coff -o win.res
+EX_FILES=example/main.w.o 
+
+TESTER_FILES=$(addprefix libui-ng/test/,drawtests.w.o images.w.o main.w.o menus.w.o page1.w.o page2.w.o page3.w.o page4.w.o page5.w.o page6.w.o page7.w.o page7a.w.o page7b.w.o page7c.w.o page11.w.o page12.w.o page13.w.o page14.w.o page15.w.o page16.w.o page17.w.o spaced.w.o)
+
 ex.exe: example/main.c win.res libui_win64.a
-	$(CC) $(CFLAGS) example/main.c libui.a win.res $(LIBS) -o ex.exe
+	$(CC) $(CFLAGS) example/main.c libui_win64.a win.res $(LIBS) -Wl,-subsystem,windows -o ex.exe
+
+tester.exe: $(TESTER_FILES) win.res libui_win64.a
+	$(CC) $(TESTER_FILES) libui_win64.a win.res $(LIBS) -o tester.exe

@@ -3,15 +3,20 @@ LIBUI=$(abspath libui-ng)
 LIBUI_COMMON:=$(patsubst %.c,%.o,$(wildcard $(LIBUI)/common/*.c))
 LIBUI_COMMON:=$(filter-out %OLD_table.o,$(LIBUI_COMMON))
 
-LIBUI_COMMON+=extras/favicon.o
-
 CFLAGS=-I$(LIBUI)
 
+ide/demo.h: ide/test.lua
+	cd ide && xxd -i test.lua > demo.h
+ide/test.c: ide/demo.h
+
 ifeq ($(TARGET),w) # ---------------------------
+LIBUI_COMMON+=extras/favicon-win.o
 include win.mk
 endif # ------------------------------
 
 ifeq ($(TARGET),l) # ------------------------------
+LIBUI_COMMON+=extras/favicon.o
+
 LIBUI_UNIX:=$(patsubst %.c,%.o,$(wildcard $(LIBUI)/unix/*.c))
 LIBUI_UNIX:=$(filter-out %OLD_table.o,$(LIBUI_UNIX))
 
@@ -41,6 +46,7 @@ ide.AppImage:
 endif # ------------------------------------
 
 ifeq ($(TARGET),m) # ------------------
+LIBUI_COMMON+=extras/favicon.o
 
 LIBUI_DARWIN:=$(patsubst %.m,%.o,$(wildcard $(LIBUI)/darwin/*.m))
 LIBUI_DARWIN:=$(filter-out %OLD_table.o,$(LIBUI_DARWIN))

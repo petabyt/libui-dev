@@ -61,7 +61,19 @@ static void run_script_clicked(uiMenuItem *item, uiWindow *w, void *data) {
 	luaL_dostring(L, text);
 }
 
+#include "favicon.h"
+
+void uiWindowSetIcon(uiWindow *w, const void *data, size_t length);
+
 int main() {
+
+#ifdef _WIN32
+	// Redirect stdout
+	AttachConsole(-1);
+	freopen("CONOUT$", "w", stdout);
+	freopen("CONOUT$", "w", stderr);
+#endif
+
 	uiInitOptions o = {0};
 	const char *err;
 
@@ -95,6 +107,9 @@ int main() {
 	item = uiMenuAppendAboutItem(menu);
 
 	mainwin = uiNewWindow("LibUI Demo", 800, 480, 1);
+
+	uiWindowSetIcon(mainwin, libui_ico, libui_ico_len);
+
 	uiWindowSetMargined(mainwin, 1);
 	uiWindowOnClosing(mainwin, onClosing, NULL);
 	uiOnShouldQuit(onShouldQuit, mainwin);

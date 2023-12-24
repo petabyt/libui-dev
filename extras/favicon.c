@@ -24,8 +24,3 @@ _UI_EXTERN void uiWindowSetIcon(uiWindow *w, const void *data, size_t length)
 }
 
 #endif
-
-_UI_EXTERN void uiWindowSetIcon(uiWindow *w, const void *data, size_t length)
-{
-	// ...
-}
