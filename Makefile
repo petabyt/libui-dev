@@ -5,20 +5,25 @@ LIBUI_COMMON:=$(filter-out %OLD_table.o,$(LIBUI_COMMON))
 
 CFLAGS=-I$(LIBUI)
 
+all:
+	echo "see Makefile"
+
 ide/demo.h: ide/test.lua
 	cd ide && xxd -i test.lua > demo.h
 ide/test.c: ide/demo.h
 
 ifeq ($(TARGET),w) # ---------------------------
-LIBUI_COMMON+=extras/favicon-win.o
+LIBUI_COMMON+=extras/favicon/win.o
 include win.mk
 endif # ------------------------------
 
 ifeq ($(TARGET),l) # ------------------------------
-LIBUI_COMMON+=extras/favicon.o
+LIBUI_COMMON+=extras/favicon/linux.o extras/label.o
 
 LIBUI_UNIX:=$(patsubst %.c,%.o,$(wildcard $(LIBUI)/unix/*.c))
 LIBUI_UNIX:=$(filter-out %OLD_table.o,$(LIBUI_UNIX))
+LIBUI_UNIX:=$(filter-out %image.o,$(LIBUI_UNIX))
+LIBUI_UNIX+=extras/image/image.o
 
 O_FILES:=$(LIBUI_COMMON) $(LIBUI_UNIX)
 O_FILES:=$(O_FILES:.o=.$(TARGET).o)
@@ -33,8 +38,8 @@ install: libui.so
 	sudo rm -rf /usr/local/lib/x86_64-linux-gnu/libui.so
 	sudo cp libui.so /usr/local/lib/x86_64-linux-gnu/libui.so
 
-ex.out: example/main.c
-	$(CC) $(CFLAGS) example/main.c -lui -o ex.out
+ex.out: example/main.c libui.so
+	$(CC) $(CFLAGS) example/main.c -L. -Wl,-rpath,. -lui -o ex.out
 
 ide.out: ide/libuilua.c ide/test.c
 	$(CC) ide/libuilua.c ide/test.c -lui -ldl $(shell pkg-config --libs --cflags lua-5.3) -o ide.out
@@ -46,7 +51,7 @@ ide.AppImage:
 endif # ------------------------------------
 
 ifeq ($(TARGET),m) # ------------------
-LIBUI_COMMON+=extras/favicon.o
+LIBUI_COMMON+=extras/favicon/darwin.o
 
 LIBUI_DARWIN:=$(patsubst %.m,%.o,$(wildcard $(LIBUI)/darwin/*.m))
 LIBUI_DARWIN:=$(filter-out %OLD_table.o,$(LIBUI_DARWIN))
@@ -59,8 +64,12 @@ LDFLAGS=-framework Foundation -framework Appkit
 libui.dylib: $(O_FILES)
 	$(CC) -shared $(O_FILES) $(LDFLAGS) -o libui.dylib
 
-ex-mac:
+ex.out:
 	$(CC) $(CFLAGS) example/main.c -L. -lui -o ex.out
+
+install: libui.dylib
+	cp libui.dylib /usr/local/lib
+	cp libui-ng/ui.h /usr/local/include
 
 endif # ---------------------
 

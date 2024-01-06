@@ -2,6 +2,8 @@
 #include <string.h>
 #include <ui.h>
 
+_UI_EXTERN void uiLabelSetAttribute(uiLabel *label, uiAttribute *attr);
+
 static int onClosing(uiWindow *w, void *data)
 {
 	uiQuit();
@@ -37,8 +39,23 @@ static uiControl *makeBasicControlsPage(void)
 		uiControl(uiNewCheckbox("Checkbox")),
 		0);
 
+	//char *data = malloc(64 * 64 * 4);
+	//memset(data, 0x111111ff, 64 * 64 * 4);
+	//uiImageAppend(img, data, 64, 64, 4);
+
+	uiImage *img = uiNewImage(64, 64);
+	extern void uiImageFromFile(uiImage *i, char *file);
+	uiImageFromFile(img, "ide/libui.png");
+
+	uiBoxAppend(vbox, uiControl(img), 0);
+
+	uiLabel *label = uiNewLabel("This is a label.\nLabels can span multiple lines.");
+
+	uiLabelSetAttribute(label, uiNewSizeAttribute(20));
+	uiLabelSetAttribute(label, uiNewItalicAttribute(uiTextItalicOblique));
+
 	uiBoxAppend(vbox,
-		uiControl(uiNewLabel("This is a label.\nLabels can span multiple lines.")),
+		uiControl(label),
 		0);
 
 	uiBoxAppend(vbox,
@@ -424,16 +441,6 @@ int main(void)
 		uiFreeInitError(err);
 		return 1;
 	}
-
-	uiBox *box = uiNewVerticalBox();
-
-	uiButton *btn = uiNewButton("Hello");
-	uiBoxAppend(box, uiControl(btn), 0);
-	uiButtonOnClicked(btn, clickevent, 0);
-
-	btn = uiNewButton("fart");
-	uiBoxAppend(box, uiControl(btn), 0);
-
 
 	uiControlShow(uiControl(mainwin));
 	uiMain();

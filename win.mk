@@ -18,6 +18,10 @@ LDFLAGS=$(LIBS)
 libui_win64.a: $(O_FILES)
 	x86_64-w64-mingw32-ar rsc libui_win64.a $(O_FILES)
 
+install: libui_win64.a
+	cp libui_win64.a /usr/x86_64-w64-mingw32/lib/libui.a
+	cp $(LIBUI)/ui.h /usr/x86_64-w64-mingw32/include/
+
 build: libui_win64.a
 	-mkdir build
 	cd $(LIBUI) && meson setup build && ninja -C build
