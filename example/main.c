@@ -2,8 +2,6 @@
 #include <string.h>
 #include <ui.h>
 
-_UI_EXTERN void uiLabelSetAttribute(uiLabel *label, uiAttribute *attr);
-
 static int onClosing(uiWindow *w, void *data)
 {
 	uiQuit();
@@ -32,31 +30,23 @@ static uiControl *makeBasicControlsPage(void)
 	uiBoxSetPadded(hbox, 1);
 	uiBoxAppend(vbox, uiControl(hbox), 0);
 
+	uiButton* button = uiNewButton("Button");
 	uiBoxAppend(hbox,
-		uiControl(uiNewButton("Button")),
+		uiControl(button),
 		0);
+	uiControlSetTooltip(button, "Button");
+
+	uiCheckbox *check = uiNewCheckbox("Checkbox");
 	uiBoxAppend(hbox,
-		uiControl(uiNewCheckbox("Checkbox")),
+		uiControl(check),
 		0);
-
-	//char *data = malloc(64 * 64 * 4);
-	//memset(data, 0x111111ff, 64 * 64 * 4);
-	//uiImageAppend(img, data, 64, 64, 4);
-
-	uiImage *img = uiNewImage(64, 64);
-	extern void uiImageFromFile(uiImage *i, char *file);
-	uiImageFromFile(img, "ide/libui.png");
-
-	uiBoxAppend(vbox, uiControl(img), 0);
+	uiControlSetTooltip(check, "Checkbox");
 
 	uiLabel *label = uiNewLabel("This is a label.\nLabels can span multiple lines.");
-
-	uiLabelSetAttribute(label, uiNewSizeAttribute(20));
-	uiLabelSetAttribute(label, uiNewItalicAttribute(uiTextItalicOblique));
-
 	uiBoxAppend(vbox,
 		uiControl(label),
 		0);
+	uiControlSetTooltip(label, "This is a label.\nLabels can span multiple lines.");
 
 	uiBoxAppend(vbox,
 		uiControl(uiNewHorizontalSeparator()),
@@ -70,26 +60,40 @@ static uiControl *makeBasicControlsPage(void)
 	uiFormSetPadded(entryForm, 1);
 	uiGroupSetChild(group, uiControl(entryForm));
 
+	uiEntry *entry = uiControl(uiNewEntry());
 	uiFormAppend(entryForm,
 		"Entry",
-		uiControl(uiNewEntry()),
+		entry,
 		0);
+	uiControlSetTooltip(entry, "Entry");	
+
+	entry = uiControl(uiNewPasswordEntry());
 	uiFormAppend(entryForm,
 		"Password Entry",
-		uiControl(uiNewPasswordEntry()),
+		entry,
 		0);
+	uiControlSetTooltip(entry, "Password Entry");	
+
+	entry = uiControl(uiNewSearchEntry());
 	uiFormAppend(entryForm,
 		"Search Entry",
-		uiControl(uiNewSearchEntry()),
+		entry,
 		0);
+	uiControlSetTooltip(entry, "Search Entry");	
+
+	uiMultilineEntry *multi_entry = uiControl(uiNewMultilineEntry());
 	uiFormAppend(entryForm,
 		"Multiline Entry",
-		uiControl(uiNewMultilineEntry()),
+		multi_entry,
 		1);
+	uiControlSetTooltip(multi_entry, "Multilne Tooltip.\nThis line should be visible.");	
+
+	multi_entry = uiControl(uiNewNonWrappingMultilineEntry());
 	uiFormAppend(entryForm,
 		"Multiline Entry No Wrap",
-		uiControl(uiNewNonWrappingMultilineEntry()),
+		multi_entry,
 		1);
+	uiControlSetTooltip(multi_entry, "Multiline Entry No Wrap");	
 
 	return uiControl(vbox);
 }
@@ -133,8 +137,11 @@ static uiControl *makeNumbersPage()
 	uiGroupSetChild(group, uiControl(vbox));
 
 	spinbox = uiNewSpinbox(0, 100);
+	uiControlSetTooltip(spinbox, "Spinbox");
 	slider = uiNewSlider(0, 100);
+	uiControlSetTooltip(slider, "Slider");
 	pbar = uiNewProgressBar();
+	uiControlSetTooltip(pbar, "ProgressBar");
 	uiSpinboxOnChanged(spinbox, onSpinboxChanged, NULL);
 	uiSliderOnChanged(slider, onSliderChanged, NULL);
 	uiBoxAppend(vbox, uiControl(spinbox), 0);
@@ -144,6 +151,7 @@ static uiControl *makeNumbersPage()
 	ip = uiNewProgressBar();
 	uiProgressBarSetValue(ip, -1);
 	uiBoxAppend(vbox, uiControl(ip), 0);
+	uiControlSetTooltip(ip, "ProgressBar2");
 
 	group = uiNewGroup("Lists");
 	uiGroupSetMargined(group, 1);
@@ -158,18 +166,21 @@ static uiControl *makeNumbersPage()
 	uiComboboxAppend(cbox, "Combobox Item 2");
 	uiComboboxAppend(cbox, "Combobox Item 3");
 	uiBoxAppend(vbox, uiControl(cbox), 0);
+	uiControlSetTooltip(cbox, "Combobox");
 
 	ecbox = uiNewEditableCombobox();
 	uiEditableComboboxAppend(ecbox, "Editable Item 1");
 	uiEditableComboboxAppend(ecbox, "Editable Item 2");
 	uiEditableComboboxAppend(ecbox, "Editable Item 3");
 	uiBoxAppend(vbox, uiControl(ecbox), 0);
+	uiControlSetTooltip(ecbox, "Editable");
 
 	rb = uiNewRadioButtons();
 	uiRadioButtonsAppend(rb, "Radio Button 1");
 	uiRadioButtonsAppend(rb, "Radio Button 2");
 	uiRadioButtonsAppend(rb, "Radio Button 3");
 	uiBoxAppend(vbox, uiControl(rb), 0);
+	uiControlSetTooltip(rb, "Radio Buttons");
 
 	return uiControl(hbox);
 }
@@ -249,22 +260,33 @@ static uiControl *makeDataChoosersPage(void)
 	uiBoxSetPadded(vbox, 1);
 	uiBoxAppend(hbox, uiControl(vbox), 0);
 
+	uiDateTimePicker *dp = uiNewDatePicker();
 	uiBoxAppend(vbox,
-		uiControl(uiNewDatePicker()),
+		uiControl(dp),
 		0);
+	uiControlSetTooltip(dp, "DatePicker");
+	dp = uiNewTimePicker();
 	uiBoxAppend(vbox,
-		uiControl(uiNewTimePicker()),
+		uiControl(dp),
 		0);
+	uiControlSetTooltip(dp, "TimePicker");
+	dp = uiNewDateTimePicker();
 	uiBoxAppend(vbox,
-		uiControl(uiNewDateTimePicker()),
+		uiControl(dp),
 		0);
+	uiControlSetTooltip(dp, "DateTimePicker");
 
+	uiFontButton *fb = uiNewFontButton();
 	uiBoxAppend(vbox,
-		uiControl(uiNewFontButton()),
+		uiControl(fb),
 		0);
+	uiControlSetTooltip(fb, "FontButton");
+
+	uiColorButton *cb = uiNewColorButton();
 	uiBoxAppend(vbox,
-		uiControl(uiNewColorButton()),
+		uiControl(cb),
 		0);
+	uiControlSetTooltip(cb, "ColorButton");
 
 	uiBoxAppend(hbox,
 		uiControl(uiNewVerticalSeparator()),
@@ -279,8 +301,10 @@ static uiControl *makeDataChoosersPage(void)
 	uiBoxAppend(vbox, uiControl(grid), 0);
 
 	button = uiNewButton("  Open File  ");
+	uiControlSetTooltip(button, "Open File");
 	entry = uiNewEntry();
 	uiEntrySetReadOnly(entry, 1);
+	uiControlSetTooltip(entry, "Read Only Entry");
 	uiButtonOnClicked(button, onOpenFileClicked, entry);
 	uiGridAppend(grid, uiControl(button),
 		0, 0, 1, 1,
@@ -290,8 +314,10 @@ static uiControl *makeDataChoosersPage(void)
 		1, uiAlignFill, 0, uiAlignFill);
 
 	button = uiNewButton("Open Folder");
+	uiControlSetTooltip(button, "Open Folder");
 	entry = uiNewEntry();
 	uiEntrySetReadOnly(entry, 1);
+	uiControlSetTooltip(entry, "Read Only Entry");
 	uiButtonOnClicked(button, onOpenFolderClicked, entry);
 	uiGridAppend(grid, uiControl(button),
 		0, 1, 1, 1,
@@ -301,8 +327,10 @@ static uiControl *makeDataChoosersPage(void)
 		1, uiAlignFill, 0, uiAlignFill);
 
 	button = uiNewButton("  Save File  ");
+	uiControlSetTooltip(button, "Save File");
 	entry = uiNewEntry();
 	uiEntrySetReadOnly(entry, 1);
+	uiControlSetTooltip(entry, "Read Only Entry");
 	uiButtonOnClicked(button, onSaveFileClicked, entry);
 	uiGridAppend(grid, uiControl(button),
 		0, 2, 1, 1,
@@ -318,11 +346,13 @@ static uiControl *makeDataChoosersPage(void)
 		0, uiAlignCenter, 0, uiAlignStart);
 
 	button = uiNewButton("Message Box");
+	uiControlSetTooltip(button, "Message Box");
 	uiButtonOnClicked(button, onMsgBoxClicked, NULL);
 	uiGridAppend(msggrid, uiControl(button),
 		0, 0, 1, 1,
 		0, uiAlignFill, 0, uiAlignFill);
 	button = uiNewButton("Error Box");
+	uiControlSetTooltip(button, "Error Box");
 	uiButtonOnClicked(button, onMsgBoxErrorClicked, NULL);
 	uiGridAppend(msggrid, uiControl(button),
 		1, 0, 1, 1,
@@ -433,7 +463,19 @@ int main(void)
 {
 	uiInitOptions o;
 	const char *err;
-	
+	uiMenu *menu;
+	uiMenuItem *item;
+	uiBox *box;
+	uiBox *hbox;
+	uiGroup *group;
+	uiBox *inner;
+	uiBox *inner2;
+	uiEntry *entry;
+	uiCombobox *cbox;
+	uiEditableCombobox *ecbox;
+	uiRadioButtons *rb;
+	uiTab *tab;
+
 	memset(&o, 0, sizeof (uiInitOptions));
 	err = uiInit(&o);
 	if (err != NULL) {
@@ -441,6 +483,139 @@ int main(void)
 		uiFreeInitError(err);
 		return 1;
 	}
+
+	menu = uiNewMenu("File");
+	item = uiMenuAppendItem(menu, "Open");
+	uiMenuItemOnClicked(item, openClicked, NULL);
+	item = uiMenuAppendItem(menu, "Open Folder");
+	uiMenuItemOnClicked(item, openFolderClicked, NULL);
+	item = uiMenuAppendItem(menu, "Save");
+	uiMenuItemOnClicked(item, saveClicked, NULL);
+	item = uiMenuAppendQuitItem(menu);
+	uiOnShouldQuit(shouldQuit, NULL);
+
+	menu = uiNewMenu("Edit");
+	item = uiMenuAppendCheckItem(menu, "Checkable Item");
+	uiMenuAppendSeparator(menu);
+	item = uiMenuAppendItem(menu, "Disabled Item");
+	uiMenuItemDisable(item);
+	item = uiMenuAppendPreferencesItem(menu);
+
+	menu = uiNewMenu("Help");
+	item = uiMenuAppendItem(menu, "Help");
+	item = uiMenuAppendAboutItem(menu);
+
+	mainwin = uiNewWindow("libui Control Gallery", 640, 480, 1);
+	uiWindowSetMargined(mainwin, 1);
+	uiWindowOnClosing(mainwin, onClosing, NULL);
+
+	box = uiNewVerticalBox();
+	uiBoxSetPadded(box, 1);
+	uiWindowSetChild(mainwin, uiControl(box));
+
+	hbox = uiNewHorizontalBox();
+	uiBoxSetPadded(hbox, 1);
+	uiBoxAppend(box, uiControl(hbox), 1);
+
+	group = uiNewGroup("Basic Controls");
+	uiGroupSetMargined(group, 1);
+	uiBoxAppend(hbox, uiControl(group), 0);
+
+	inner = uiNewVerticalBox();
+	uiBoxSetPadded(inner, 1);
+	uiGroupSetChild(group, uiControl(inner));
+
+	uiBoxAppend(inner,
+		uiControl(uiNewButton("Button")),
+		0);
+	uiBoxAppend(inner,
+		uiControl(uiNewCheckbox("Checkbox")),
+		0);
+	entry = uiNewEntry();
+	uiEntrySetText(entry, "Entry");
+	uiBoxAppend(inner,
+		uiControl(entry),
+		0);
+	uiBoxAppend(inner,
+		uiControl(uiNewLabel("Label")),
+		0);
+
+	uiBoxAppend(inner,
+		uiControl(uiNewHorizontalSeparator()),
+		0);
+
+	uiBoxAppend(inner,
+		uiControl(uiNewDatePicker()),
+		0);
+	uiBoxAppend(inner,
+		uiControl(uiNewTimePicker()),
+		0);
+	uiBoxAppend(inner,
+		uiControl(uiNewDateTimePicker()),
+		0);
+
+	uiBoxAppend(inner,
+		uiControl(uiNewFontButton()),
+		0);
+
+	uiBoxAppend(inner,
+		uiControl(uiNewColorButton()),
+		0);
+
+	inner2 = uiNewVerticalBox();
+	uiBoxSetPadded(inner2, 1);
+	uiBoxAppend(hbox, uiControl(inner2), 1);
+
+	group = uiNewGroup("Numbers");
+	uiGroupSetMargined(group, 1);
+	uiBoxAppend(inner2, uiControl(group), 0);
+
+	inner = uiNewVerticalBox();
+	uiBoxSetPadded(inner, 1);
+	uiGroupSetChild(group, uiControl(inner));
+
+	spinbox = uiNewSpinbox(0, 100);
+	uiSpinboxOnChanged(spinbox, onSpinboxChanged, NULL);
+	uiBoxAppend(inner, uiControl(spinbox), 0);
+
+	slider = uiNewSlider(0, 100);
+	uiSliderOnChanged(slider, onSliderChanged, NULL);
+	uiBoxAppend(inner, uiControl(slider), 0);
+
+	progressbar = uiNewProgressBar();
+	uiBoxAppend(inner, uiControl(progressbar), 0);
+
+	group = uiNewGroup("Lists");
+	uiGroupSetMargined(group, 1);
+	uiBoxAppend(inner2, uiControl(group), 0);
+
+	inner = uiNewVerticalBox();
+	uiBoxSetPadded(inner, 1);
+	uiGroupSetChild(group, uiControl(inner));
+
+	cbox = uiNewCombobox();
+	uiComboboxAppend(cbox, "Combobox Item 1");
+	uiComboboxAppend(cbox, "Combobox Item 2");
+	uiComboboxAppend(cbox, "Combobox Item 3");
+	uiBoxAppend(inner, uiControl(cbox), 0);
+
+	ecbox = uiNewEditableCombobox();
+	uiEditableComboboxAppend(ecbox, "Editable Item 1");
+	uiEditableComboboxAppend(ecbox, "Editable Item 2");
+	uiEditableComboboxAppend(ecbox, "Editable Item 3");
+	uiBoxAppend(inner, uiControl(ecbox), 0);
+
+	rb = uiNewRadioButtons();
+	uiRadioButtonsAppend(rb, "Radio Button 1");
+	uiRadioButtonsAppend(rb, "Radio Button 2");
+	uiRadioButtonsAppend(rb, "Radio Button 3");
+	uiBoxAppend(inner, uiControl(rb), 1);
+
+	tab = uiNewTab();
+	uiTabAppend(tab, "Page 1", uiControl(uiNewHorizontalBox()));
+	uiTabAppend(tab, "Page 2", uiControl(uiNewHorizontalBox()));
+	uiTabAppend(tab, "Page 3", uiControl(uiNewHorizontalBox()));
+	uiBoxAppend(inner2, uiControl(tab), 1);
 
 	uiControlShow(uiControl(mainwin));
 	uiMain();

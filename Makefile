@@ -3,7 +3,7 @@ LIBUI=$(abspath libui-ng)
 LIBUI_COMMON:=$(patsubst %.c,%.o,$(wildcard $(LIBUI)/common/*.c))
 LIBUI_COMMON:=$(filter-out %OLD_table.o,$(LIBUI_COMMON))
 
-CFLAGS=-I$(LIBUI)
+CFLAGS=-I$(LIBUI) -g
 
 all:
 	echo "see Makefile"
@@ -13,7 +13,7 @@ ide/demo.h: ide/test.lua
 ide/test.c: ide/demo.h
 
 ifeq ($(TARGET),w) # ---------------------------
-LIBUI_COMMON+=extras/favicon/win.o
+LIBUI_COMMON+=extras/favicon/win.o extras/scroll.o
 include win.mk
 endif # ------------------------------
 
@@ -69,7 +69,7 @@ ex.out:
 
 install: libui.dylib
 	cp libui.dylib /usr/local/lib
-	cp libui-ng/ui.h /usr/local/include
+	cp $(LIBUI)/ui.h /usr/local/include
 
 endif # ---------------------
 
