@@ -339,6 +339,7 @@ static void vscrollParams(uiScroll *a, struct scrollParams *p)
 	uiWindowsEnsureGetClientRect(a->hwnd, &r);
 	p->pagesize = r.bottom - r.top;
 	p->length = a->scrollHeight;
+	if (p->length == 0) p->length = 1;
 	p->wheelCarry = &(a->vwheelCarry);
 	p->wheelSPIAction = SPI_GETWHEELSCROLLLINES;
 }
@@ -357,9 +358,6 @@ static void vscroll(uiScroll *a, WPARAM wParam, LPARAM lParam)
 
 	vscrollParams(a, &p);
 	scroll(a, SB_VERT, &p, wParam, lParam);
-
-
-	//ScrollWindow(child, 0, y, NULL, NULL);
 }
 
 static void vwheelscroll(uiScroll *a, WPARAM wParam, LPARAM lParam)
@@ -373,7 +371,7 @@ static void vwheelscroll(uiScroll *a, WPARAM wParam, LPARAM lParam)
 void areaUpdateScroll(uiScroll *a)
 {
 	// use a no-op scroll to simulate scrolling
-	hscrollby(a, 0);
+	//hscrollby(a, 0);
 	vscrollby(a, 0);
 }
 
@@ -454,6 +452,7 @@ static void boxRelayout(uiScroll *b)
 	}
 
 	uiWindowsEnsureMoveWindowDuringResize((HWND) uiControlHandle(b->child.c), 0, 0, b->child.width, b->child.height);
+	areaUpdateScroll(b);
 }
 
 static void uiScrollDestroy(uiControl *c)
@@ -546,11 +545,8 @@ void uiScrollDelete(uiScroll *b, int index)
 {
 	uiControl *c;
 
-	//c = (*(b->controls))[index].c;
 	uiControlSetParent(c, NULL);
 	uiWindowsControlSetParentHWND(uiWindowsControl(c), NULL);
-	//b->controls->erase(b->controls->begin() + index);
-	//boxArrangeChildren(b);
 	uiWindowsControlMinimumSizeChanged(uiWindowsControl(b));
 }
 
@@ -576,24 +572,18 @@ extern "C" {
 }
 
 void uiScrollSetChild(uiScroll *scroll, uiControl *ctl) {
-	printf("Setting child\n");
 	scroll->child.c = ctl;
 
 	uiControlSetParent(ctl, uiControl(scroll));
 	uiWindowsControlSetParentHWND(uiWindowsControl(ctl), scroll->hwnd);
 
-	//boxRelayout(scroll);
-	areaUpdateScroll(scroll);
+	boxRelayout(scroll);
 }
 
 uiScroll *uiNewScroll() {
 	uiScroll *s;
 
-	printf("new\n");
-
 	uiWindowsNewControl(uiScroll, s);
-
-	//s->hwnd = uiWindowsMakeContainer(uiWindowsControl(s), onResize);
 
 	struct containerInit init;
 
@@ -607,10 +597,10 @@ uiScroll *uiNewScroll() {
 		hInstance, &init,
 		FALSE);
 
-//	s->scrollWidth = 100;
-//	s->scrollHeight = 10000;
-//	s->hscrollpos = 0;
-//	s->vscrollpos = 0;
+	s->scrollWidth = 0;
+	s->scrollHeight = 0;
+	s->hscrollpos = 0;
+	s->vscrollpos = 0;
 	s->hwheelCarry = 1000;
 	s->vwheelCarry = 1000;
 
