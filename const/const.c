@@ -6,8 +6,6 @@
 #include "json.h"
 #include "const.h"
 
-void uiAndroidSetContent(uiControl *c);
-
 typedef struct uiScroll uiScroll;
 _UI_EXTERN uiScroll *uiNewScroll();
 _UI_EXTERN void uiScrollSetChild(uiScroll *scroll, uiControl *ctl);
