@@ -4,6 +4,7 @@
 #include <string.h>
 #include "ui.h"
 #include "json.h"
+#include "const.h"
 
 void uiAndroidSetContent(uiControl *c);
 
@@ -124,20 +125,6 @@ int on_closing(uiWindow *w, void *data)
 }
 
 int main() {
-	FILE *f = fopen("const/const.txt", "rb");
-	if (f == NULL) return 1;
-
-	fseek(f, 0, SEEK_END);
-	long fsize = ftell(f);
-	fseek(f, 0, SEEK_SET);
-
-	char *default_bible = malloc(fsize + 1);
-	fread(default_bible, fsize, 1, f);
-	fclose(f);
-	default_bible[fsize] = 0;
-
-	puts("done");
-
 	uiInitOptions o;
 	uiWindow *w;
 
@@ -151,7 +138,7 @@ int main() {
 	w = uiNewWindow("Hello, World", 800, 500, 0);
 	uiWindowSetMargined(w, 1);
 
-	uiTab *app = get_app(default_bible);
+	uiTab *app = get_app((char *)const_txt);
 
 	uiWindowSetChild(w, uiControl(app));
 
