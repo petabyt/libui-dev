@@ -1,4 +1,5 @@
-LIBUI=$(abspath libui-ng)
+#LIBUI=$(abspath scroll)
+LIBUI := $(abspath libui-ng)
 
 LIBUI_COMMON:=$(patsubst %.c,%.o,$(wildcard $(LIBUI)/common/*.c))
 LIBUI_COMMON:=$(filter-out %OLD_table.o,$(LIBUI_COMMON))
@@ -12,12 +13,12 @@ ide/demo.h: ide/test.lua
 	cd ide && xxd -i test.lua > demo.h
 ide/test.c: ide/demo.h
 
-ifeq ($(TARGET),w) # ---------------------------
+ifeq ($(TARGET),w) # ++++++++++++++++++++++++++
 LIBUI_COMMON+=extras/favicon/win.o extras/scroll.o
 include win.mk
 endif # ------------------------------
 
-ifeq ($(TARGET),l) # ------------------------------
+ifeq ($(TARGET),l) # ++++++++++++++++++++++++++
 LIBUI_COMMON+=extras/favicon/linux.o extras/label.o
 
 LIBUI_UNIX:=$(patsubst %.c,%.o,$(wildcard $(LIBUI)/unix/*.c))
@@ -37,6 +38,9 @@ libui.so: $(O_FILES)
 install: libui.so
 	sudo rm -rf /usr/local/lib/x86_64-linux-gnu/libui.so
 	sudo cp libui.so /usr/local/lib/x86_64-linux-gnu/libui.so
+	sudo rm -rf /usr/lib/libui.so
+	sudo cp libui.so /usr/lib/libui.so
+	sudo cp $(LIBUI)/ui.h /usr/include/ui.h
 
 ex.out: example/main.c libui.so
 	$(CC) $(CFLAGS) example/main.c -L. -Wl,-rpath,. -lui -o ex.out
@@ -44,13 +48,16 @@ ex.out: example/main.c libui.so
 ide.out: ide/libuilua.c ide/test.c
 	$(CC) ide/libuilua.c ide/test.c -lui -ldl $(shell pkg-config --libs --cflags lua-5.3) -o ide.out
 
+const.out: const/const.c const/json.c
+	$(CC) const/const.c const/json.c -lui -ldl -o const.out
+
 ide.AppImage:
 	linuxdeploy --appdir=AppDir --executable=ide.out -d ide/ide.desktop -i ide/libui.png
 	appimagetool AppDir
 
 endif # ------------------------------------
 
-ifeq ($(TARGET),m) # ------------------
+ifeq ($(TARGET),m) # ++++++++++++++++++++++++++
 LIBUI_COMMON+=extras/favicon/darwin.o
 
 LIBUI_DARWIN:=$(patsubst %.m,%.o,$(wildcard $(LIBUI)/darwin/*.m))

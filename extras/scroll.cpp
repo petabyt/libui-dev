@@ -4,7 +4,7 @@ typedef struct uiScroll uiScroll;
 #define uiScroll(this) ((uiScroll *) (this))
 
 #define scrollClass L"libui_uiScrollClass"
-#define uiScrollSignature 0x083983
+#define uiScrollSignature 0x5dcd9b83
 
 #include "../libui-ng/windows/uipriv_windows.hpp"
 
@@ -371,7 +371,7 @@ static void vwheelscroll(uiScroll *a, WPARAM wParam, LPARAM lParam)
 void areaUpdateScroll(uiScroll *a)
 {
 	// use a no-op scroll to simulate scrolling
-	//hscrollby(a, 0);
+	hscrollby(a, 0);
 	vscrollby(a, 0);
 }
 
@@ -397,23 +397,22 @@ static void boxRelayout(uiScroll *b)
 	int minimumWidth, minimumHeight;
 	int nVisible;
 
+	if (b->child.c == NULL) return;
+
 	uiWindowsEnsureGetClientRect(b->hwnd, &r);
 	x = r.left;
 	y = r.top;
 	width = r.right - r.left;
 	height = r.bottom - r.top;
 
-	// -1) get this Box's padding
 	boxPadding(b, &xpadding, &ypadding);
 
-	// 1) get width and height of non-stretchy controls
+	// get width and height of non-stretchy controls
 	// this will tell us how much space will be left for stretchy controls
 	stretchywid = width;
 	stretchyht = height;
 	nStretchy = 0;
 	nVisible = 0;
-
-	if (b->child.c == NULL) return;
 
 	uiWindowsControlMinimumSize(uiWindowsControl(b->child.c), &minimumWidth, &minimumHeight);
 	if (b->vertical) {		// all controls have same width
@@ -429,7 +428,7 @@ static void boxRelayout(uiScroll *b)
 	b->scrollHeight = minimumHeight;
 	b->scrollWidth = minimumWidth;
 
-	// 2) now inset the available rect by the needed padding
+	// now inset the available rect by the needed padding
 	if (b->vertical) {
 		height -= (nVisible - 1) * ypadding;
 		stretchyht -= (nVisible - 1) * ypadding;
@@ -438,7 +437,7 @@ static void boxRelayout(uiScroll *b)
 		stretchywid -= (nVisible - 1) * xpadding;
 	}
 
-	// 3) now get the size of stretchy controls
+	// now get the size of stretchy controls
 	if (nStretchy != 0) {
 		if (b->vertical) {
 			stretchyht /= nStretchy;
@@ -502,23 +501,23 @@ static void uiScrollMinimumSize(uiWindowsControl *c, int *width, int *height)
 	*width = 0;
 	*height = 0;
 
-	// 0) get this Box's padding
-	boxPadding(b, &xpadding, &ypadding);
-
-	if (nVisible == 0)		// just return 0x0
-		return;
-
-	// 2) now outset the desired rect with the needed padding
-	if (b->vertical)
-		*height += (nVisible - 1) * ypadding;
-	else
-		*width += (nVisible - 1) * xpadding;
-
-	// 3) and now we can add in stretchy controls
-	if (b->vertical)
-		*height += nStretchy * maxStretchyHeight;
-	else
-		*width += nStretchy * maxStretchyWidth;
+// 	// 0) get this Box's padding
+// 	boxPadding(b, &xpadding, &ypadding);
+// 
+// 	if (nVisible == 0)		// just return 0x0
+// 		return;
+// 
+// 	// 2) now outset the desired rect with the needed padding
+// 	if (b->vertical)
+// 		*height += (nVisible - 1) * ypadding;
+// 	else
+// 		*width += (nVisible - 1) * xpadding;
+// 
+// 	// 3) and now we can add in stretchy controls
+// 	if (b->vertical)
+// 		*height += nStretchy * maxStretchyHeight;
+// 	else
+// 		*width += nStretchy * maxStretchyWidth;
 }
 
 static void uiScrollMinimumSizeChanged(uiWindowsControl *c)
@@ -587,7 +586,6 @@ uiScroll *uiNewScroll() {
 
 	struct containerInit init;
 
-	// TODO onResize cannot be NULL
 	init.c = uiWindowsControl(s);
 	init.onResize = onResize;
 
