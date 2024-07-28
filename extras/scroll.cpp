@@ -6,7 +6,7 @@ typedef struct uiScroll uiScroll;
 #define scrollClass L"libui_uiScrollClass"
 #define uiScrollSignature 0x5dcd9b83
 
-#include "../libui-ng/windows/uipriv_windows.hpp"
+#include <windows/uipriv_windows.hpp>
 
 struct containerInit {
 	uiWindowsControl *c;

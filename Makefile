@@ -1,4 +1,3 @@
-#LIBUI=$(abspath scroll)
 LIBUI := $(abspath libui-ng)
 
 LIBUI_COMMON:=$(patsubst %.c,%.o,$(wildcard $(LIBUI)/common/*.c))
@@ -14,23 +13,23 @@ ide/demo.h: ide/test.lua
 ide/test.c: ide/demo.h
 
 ifeq ($(TARGET),w) # ++++++++++++++++++++++++++
-LIBUI_COMMON+=extras/favicon/win.o extras/scroll.o
+LIBUI_COMMON += extras/favicon/win.o extras/scroll.o extras/win_init.o
 include win.mk
 endif # ------------------------------
 
 ifeq ($(TARGET),l) # ++++++++++++++++++++++++++
-LIBUI_COMMON+=extras/favicon/linux.o extras/label.o
+LIBUI_COMMON += extras/favicon/linux.o extras/label.o
 
-LIBUI_UNIX:=$(patsubst %.c,%.o,$(wildcard $(LIBUI)/unix/*.c))
-LIBUI_UNIX:=$(filter-out %OLD_table.o,$(LIBUI_UNIX))
-LIBUI_UNIX:=$(filter-out %image.o,$(LIBUI_UNIX))
-LIBUI_UNIX+=extras/image/image.o
+LIBUI_UNIX := $(patsubst %.c,%.o,$(wildcard $(LIBUI)/unix/*.c))
+LIBUI_UNIX := $(filter-out %OLD_table.o,$(LIBUI_UNIX))
+LIBUI_UNIX := $(filter-out %image.o,$(LIBUI_UNIX))
+LIBUI_UNIX += extras/image/image.o
 
-O_FILES:=$(LIBUI_COMMON) $(LIBUI_UNIX)
-O_FILES:=$(O_FILES:.o=.$(TARGET).o)
+O_FILES := $(LIBUI_COMMON) $(LIBUI_UNIX)
+O_FILES := $(O_FILES:.o=.$(TARGET).o)
 
-CFLAGS+=$(shell pkg-config --cflags gtk+-3.0) -fPIC
-LDFLAGS+=$(shell pkg-config --libs gtk+-3.0)
+CFLAGS += $(shell pkg-config --cflags gtk+-3.0) -fPIC
+LDFLAGS += $(shell pkg-config --libs gtk+-3.0)
 
 libui.so: $(O_FILES)
 	$(CC) -shared $(O_FILES) $(LDFLAGS) -o libui.so
@@ -58,15 +57,15 @@ ide.AppImage:
 endif # ------------------------------------
 
 ifeq ($(TARGET),m) # ++++++++++++++++++++++++++
-LIBUI_COMMON+=extras/favicon/darwin.o
+LIBUI_COMMON += extras/favicon/darwin.o
 
-LIBUI_DARWIN:=$(patsubst %.m,%.o,$(wildcard $(LIBUI)/darwin/*.m))
-LIBUI_DARWIN:=$(filter-out %OLD_table.o,$(LIBUI_DARWIN))
+LIBUI_DARWIN := $(patsubst %.m,%.o,$(wildcard $(LIBUI)/darwin/*.m))
+LIBUI_DARWIN := $(filter-out %OLD_table.o,$(LIBUI_DARWIN))
 
-O_FILES:=$(LIBUI_COMMON) $(LIBUI_DARWIN)
-O_FILES:=$(O_FILES:.o=.$(TARGET).o)
+O_FILES := $(LIBUI_COMMON) $(LIBUI_DARWIN)
+O_FILES := $(O_FILES:.o=.$(TARGET).o)
 
-LDFLAGS=-framework Foundation -framework Appkit
+LDFLAGS := -framework Foundation -framework Appkit
 
 libui.dylib: $(O_FILES)
 	$(CC) -shared $(O_FILES) $(LDFLAGS) -o libui.dylib
