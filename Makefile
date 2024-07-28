@@ -65,7 +65,7 @@ LIBUI_DARWIN := $(filter-out %OLD_table.o,$(LIBUI_DARWIN))
 O_FILES := $(LIBUI_COMMON) $(LIBUI_DARWIN)
 O_FILES := $(O_FILES:.o=.$(TARGET).o)
 
-LDFLAGS := -framework Foundation -framework Appkit
+LDFLAGS := -framework Foundation -framework Appkit -framework CoreText -framework CoreGraphics -Wl,-undefined,dynamic_lookup
 
 libui.dylib: $(O_FILES)
 	$(CC) -shared $(O_FILES) $(LDFLAGS) -o libui.dylib
@@ -91,6 +91,7 @@ endif # ---------------------
 clean:
 	make TARGET=l clean_
 	make TARGET=w clean_
+	make TARGET=m clean_
 
 clean_:
 	$(RM) $(O_FILES) *.o *.exe *.out *.res *.so *.a build *.dylib example/*.out ide/*.o *.res
