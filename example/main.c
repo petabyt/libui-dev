@@ -16,6 +16,33 @@ static int onShouldQuit(void *data)
 	return 1;
 }
 
+typedef struct CustomControl {
+	uiControl c;
+	uiBox *box;
+	int x;
+}CustomControl;
+
+static uintptr_t custom_handle(uiControl *x) {
+	CustomControl *y = (CustomControl *)x;
+	return uiControlHandle((uiControl *)(y->box));
+}
+
+static void custom_setparent(uiControl *x, uiControl *parent) {
+	CustomControl *y = (CustomControl *)x;
+	return uiControlSetParent((uiControl *)(y->box), parent);
+}
+
+static uiControl *get_custom(void) {
+	CustomControl *x = (CustomControl *)uiAllocControl(sizeof(struct CustomControl), 1234, 123, "CustomControl");
+
+	x->c.Handle = custom_handle;
+	x->c.SetParent = custom_setparent;
+	
+	x->box = uiNewVerticalBox();
+
+	return (uiControl *)x;
+}
+
 static uiControl *makeBasicControlsPage(void)
 {
 	uiBox *vbox;
@@ -336,7 +363,7 @@ int main(void)
 	uiWindowSetChild(mainwin, uiControl(tab));
 	uiWindowSetMargined(mainwin, 1);
 
-	uiTabAppend(tab, "Basic Controls", makeBasicControlsPage());
+	uiTabAppend(tab, "Basic Controls", get_custom());
 	uiTabSetMargined(tab, 0, 1);
 
 	uiTabAppend(tab, "Numbers and Lists", makeNumbersPage());

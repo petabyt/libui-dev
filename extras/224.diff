@@ -1,0 +1,385 @@
+diff --git a/darwin/editablecombo.m b/darwin/editablecombo.m
+index 99a9a4885..f60da31da 100644
+--- a/darwin/editablecombo.m
++++ b/darwin/editablecombo.m
+@@ -134,6 +134,16 @@ void uiEditableComboboxOnChanged(uiEditableCombobox *c, void (*f)(uiEditableComb
+ 	c->onChangedData = data;
+ }
+ 
++char *uiEditableComboboxPlaceholder(uiEditableCombobox *c)
++{
++	return uiDarwinNSStringToText([c->cb.cell placeholderString]);
++}
++
++void uiEditableComboboxSetPlaceholder(uiEditableCombobox *c, const char *text)
++{
++	[c->cb.cell setPlaceholderString:uiprivToNSString(text)];
++}
++
+ static void defaultOnChanged(uiEditableCombobox *c, void *data)
+ {
+ 	// do nothing
+diff --git a/darwin/entry.m b/darwin/entry.m
+index 7b2358e55..a87b48165 100644
+--- a/darwin/entry.m
++++ b/darwin/entry.m
+@@ -150,6 +150,19 @@ void uiEntrySetReadOnly(uiEntry *e, int readonly)
+ 	[e->textfield setEditable:editable];
+ }
+ 
++char *uiEntryPlaceholder(uiEntry *e)
++{
++	NSString* text = [e->textfield.cell placeholderString];
++	if (!text)
++		return uiDarwinNSStringToText(@"");
++	return uiDarwinNSStringToText(text);
++}
++
++void uiEntrySetPlaceholder(uiEntry *e, const char *text)
++{
++	[e->textfield.cell setPlaceholderString:uiprivToNSString(text)];
++}
++
+ static void defaultOnChanged(uiEntry *e, void *data)
+ {
+ 	// do nothing
+diff --git a/examples/controlgallery/main.c b/examples/controlgallery/main.c
+index 6415e4ff2..376232c8d 100644
+--- a/examples/controlgallery/main.c
++++ b/examples/controlgallery/main.c
+@@ -54,9 +54,11 @@ static uiControl *makeBasicControlsPage(void)
+ 	uiFormSetPadded(entryForm, 1);
+ 	uiGroupSetChild(group, uiControl(entryForm));
+ 
++	uiEntry* entry = uiNewEntry();
++	uiEntrySetPlaceholder(entry, "Type here");
+ 	uiFormAppend(entryForm,
+ 		"Entry",
+-		uiControl(uiNewEntry()),
++		uiControl(entry),
+ 		0);
+ 	uiFormAppend(entryForm,
+ 		"Password Entry",
+@@ -147,6 +149,7 @@ static uiControl *makeNumbersPage()
+ 	uiEditableComboboxAppend(ecbox, "Editable Item 1");
+ 	uiEditableComboboxAppend(ecbox, "Editable Item 2");
+ 	uiEditableComboboxAppend(ecbox, "Editable Item 3");
++	uiEditableComboboxSetPlaceholder(ecbox, "Select an item");
+ 	uiBoxAppend(vbox, uiControl(ecbox), 0);
+ 
+ 	rb = uiNewRadioButtons();
+@@ -264,6 +267,7 @@ static uiControl *makeDataChoosersPage(void)
+ 
+ 	button = uiNewButton("  Open File  ");
+ 	entry = uiNewEntry();
++	uiEntrySetPlaceholder(entry, "Select a file");
+ 	uiEntrySetReadOnly(entry, 1);
+ 	uiButtonOnClicked(button, onOpenFileClicked, entry);
+ 	uiGridAppend(grid, uiControl(button),
+diff --git a/test/unit/entry.c b/test/unit/entry.c
+index f5a79ee1c..52f06a6d2 100644
+--- a/test/unit/entry.c
++++ b/test/unit/entry.c
+@@ -51,6 +51,33 @@ static void entrySetTextNoCallback(void **state)
+ 	uiEntrySetText(*e, "Text 2");
+ }
+ 
++static void entryPlaceholderDefault(void **state)
++{
++	uiEntry **e = uiEntryPtrFromState(state);
++	const char *text = "";
++	char *rv;
++	rv = uiEntryPlaceholder(*e);
++	assert_string_equal(rv, text);
++	uiFreeText(rv);
++}
++
++static void entrySetPlaceholder(void **state)
++{
++	uiEntry **e = uiEntryPtrFromState(state);
++	const char *text1 = "Text 1";
++	const char *text2 = "Text 2";
++	char *rv;
++
++	uiEntrySetPlaceholder(*e, text1);
++	rv = uiEntryPlaceholder(*e);
++	assert_string_equal(rv, text1);
++	uiFreeText(rv);
++	uiEntrySetPlaceholder(*e, text2);
++	rv = uiEntryPlaceholder(*e);
++	assert_string_equal(rv, text2);
++	uiFreeText(rv);
++}
++
+ static void entryReadOnlyDefault(void **state)
+ {
+ 	uiEntry **e = uiEntryPtrFromState(state);
+@@ -123,6 +150,8 @@ int entryRunUnitTests(void)
+ 		entryUnitTests(entryTextDefault),
+ 		entryUnitTests(entrySetText),
+ 		entryUnitTests(entrySetTextNoCallback),
++		entryUnitTests(entryPlaceholderDefault),
++		entryUnitTests(entrySetPlaceholder),
+ 		entryUnitTests(entryReadOnlyDefault),
+ 		entryUnitTests(entrySetReadOnly),
+ 	};
+diff --git a/ui.h b/ui.h
+index f7a9e610e..bc59fe376 100644
+--- a/ui.h
++++ b/ui.h
+@@ -812,6 +812,29 @@ _UI_EXTERN int uiEntryReadOnly(uiEntry *e);
+  */
+ _UI_EXTERN void uiEntrySetReadOnly(uiEntry *e, int readonly);
+ 
++/**
++ * Returns the entry's placeholder.
++ *
++ * @param e uiEntry instance.
++ * @returns The placeholder text of the entry.\n
++ *          A `NUL` terminated UTF-8 string.\n
++ *          Caller is responsible for freeing the data with `uiFreeText()`.
++ * @memberof uiEntry
++ */
++_UI_EXTERN char *uiEntryPlaceholder(uiEntry *e);
++
++/**
++ * Sets text to be displayed in the entry when it is empty.
++ *
++ * @param e uiEntry instance.
++ * @param text Placeholder text.\n
++ *             A valid, `NUL` terminated UTF-8 string.\n
++ *             Data is copied internally. Ownership is not transferred.
++ * @warning Read only entries do not display the placeholder text on Windows.
++ * @memberof uiEntry
++ */
++_UI_EXTERN void uiEntrySetPlaceholder(uiEntry *e, const char *text);
++
+ /**
+  * Creates a new entry.
+  *
+@@ -1485,6 +1508,28 @@ _UI_EXTERN void uiEditableComboboxSetText(uiEditableCombobox *c, const char *tex
+ _UI_EXTERN void uiEditableComboboxOnChanged(uiEditableCombobox *c,
+ 	void (*f)(uiEditableCombobox *sender, void *senderData), void *data);
+ 
++/**
++ * Returns the editable combo box's placeholder.
++ *
++ * @param c uiEditableCombobox instance.
++ * @returns The placeholder text of the combo box.\n
++ *          A `NUL` terminated UTF-8 string.\n
++ *          Caller is responsible for freeing the data with `uiFreeText()`.
++ * @memberof uiEditableCombobox
++ */
++_UI_EXTERN char *uiEditableComboboxPlaceholder(uiEditableCombobox *c);
++
++/**
++ * Sets text to be displayed in the editable combo box when it is empty.
++ *
++ * @param c uiEditableCombobox instance.
++ * @param text Placeholder text.\n
++ *             A valid, `NUL` terminated UTF-8 string.\n
++ *             Data is copied internally. Ownership is not transferred.
++ * @memberof uiEditableCombobox
++ */
++_UI_EXTERN void uiEditableComboboxSetPlaceholder(uiEditableCombobox *c, const char *text);
++
+ /**
+  * Creates a new editable combo box.
+  *
+diff --git a/unix/editablecombo.c b/unix/editablecombo.c
+index 24551d871..2fcbf07c2 100644
+--- a/unix/editablecombo.c
++++ b/unix/editablecombo.c
+@@ -54,6 +54,22 @@ void uiEditableComboboxOnChanged(uiEditableCombobox *c, void (*f)(uiEditableComb
+ 	c->onChangedData = data;
+ }
+ 
++char *uiEditableComboboxPlaceholder(uiEditableCombobox *c)
++{
++	GtkEntry *e;
++	// since there isn't a gtk_combo_box_get_placeholder_text()...
++	e = GTK_ENTRY(gtk_bin_get_child(c->bin));
++	return uiUnixStrdupText(gtk_entry_get_placeholder_text(e));
++}
++
++void uiEditableComboboxSetPlaceholder(uiEditableCombobox *c, const char *text)
++{
++	GtkEntry *e;
++	// since there isn't a gtk_combo_box_set_placeholder_text()...
++	e = GTK_ENTRY(gtk_bin_get_child(c->bin));
++	gtk_entry_set_placeholder_text(e, text);
++}
++
+ uiEditableCombobox *uiNewEditableCombobox(void)
+ {
+ 	uiEditableCombobox *c;
+diff --git a/unix/entry.c b/unix/entry.c
+index 4a9a1d041..01a53de2d 100644
+--- a/unix/entry.c
++++ b/unix/entry.c
+@@ -60,6 +60,19 @@ void uiEntrySetReadOnly(uiEntry *e, int readonly)
+ 	gtk_editable_set_editable(e->editable, editable);
+ }
+ 
++char *uiEntryPlaceholder(uiEntry *e)
++{
++	char* text = gtk_entry_get_placeholder_text(e->entry);
++	if (!text)
++		return uiUnixStrdupText("");
++	return uiUnixStrdupText(text);
++}
++
++void uiEntrySetPlaceholder(uiEntry *e, const char *text)
++{
++	gtk_entry_set_placeholder_text(e->entry, text);
++}
++
+ static uiEntry *finishNewEntry(GtkWidget *w, const gchar *signal)
+ {
+ 	uiEntry *e;
+diff --git a/windows/editablecombo.cpp b/windows/editablecombo.cpp
+index f1831bb60..82634e588 100644
+--- a/windows/editablecombo.cpp
++++ b/windows/editablecombo.cpp
+@@ -10,6 +10,7 @@ struct uiEditableCombobox {
+ 	HWND hwnd;
+ 	void (*onChanged)(uiEditableCombobox *, void *);
+ 	void *onChangedData;
++	int placeholderLen;
+ };
+ 
+ static BOOL onWM_COMMAND(uiControl *cc, HWND hwnd, WORD code, LRESULT *lResult)
+@@ -98,6 +99,16 @@ void uiEditableComboboxOnChanged(uiEditableCombobox *c, void (*f)(uiEditableComb
+ 	c->onChangedData = data;
+ }
+ 
++char *uiEditableComboboxPlaceholder(uiEditableCombobox *c)
++{
++	return uiprivComboboxPlaceholder(c->hwnd, c->placeholderLen);
++}
++
++void uiEditableComboboxSetPlaceholder(uiEditableCombobox *c, const char *text)
++{
++	c->placeholderLen = uiprivSetComboboxPlaceholder(c->hwnd, text);
++}
++
+ uiEditableCombobox *uiNewEditableCombobox(void)
+ {
+ 	uiEditableCombobox *c;
+diff --git a/windows/entry.cpp b/windows/entry.cpp
+index cb6913082..6229f0337 100644
+--- a/windows/entry.cpp
++++ b/windows/entry.cpp
+@@ -7,6 +7,7 @@ struct uiEntry {
+ 	void (*onChanged)(uiEntry *, void *);
+ 	void *onChangedData;
+ 	BOOL inhibitChanged;
++	int placeholderLen;
+ };
+ 
+ static BOOL onWM_COMMAND(uiControl *c, HWND hwnd, WORD code, LRESULT *lResult)
+@@ -90,6 +91,17 @@ void uiEntrySetReadOnly(uiEntry *e, int readonly)
+ 		logLastError(L"error setting uiEntry read-only state");
+ }
+ 
++char *uiEntryPlaceholder(uiEntry *e)
++{
++	return uiprivEntryPlaceholder(e->hwnd, e->placeholderLen);
++}
++
++void uiEntrySetPlaceholder(uiEntry *e, const char *text)
++{
++	// This won't work for read-only entries.
++	e->placeholderLen = uiprivSetEntryPlaceholder(e->hwnd, text);
++}
++
+ static uiEntry *finishNewEntry(DWORD style)
+ {
+ 	uiEntry *e;
+@@ -101,6 +113,7 @@ static uiEntry *finishNewEntry(DWORD style)
+ 		style | ES_AUTOHSCROLL | ES_LEFT | ES_NOHIDESEL | WS_TABSTOP,
+ 		hInstance, NULL,
+ 		TRUE);
++	e->placeholderLen = 0;
+ 
+ 	uiWindowsRegisterWM_COMMANDHandler(e->hwnd, onWM_COMMAND, uiControl(e));
+ 	uiEntryOnChanged(e, defaultOnChanged, NULL);
+diff --git a/windows/text.cpp b/windows/text.cpp
+index 2c8af34db..96f765713 100644
+--- a/windows/text.cpp
++++ b/windows/text.cpp
+@@ -136,6 +136,59 @@ void uiWindowsSetWindowText(HWND hwnd, const char *text)
+ 	uiprivFree(wtext);
+ }
+ 
++static char *getPlaceholder(HWND hwnd, int len, UINT msg)
++{
++	len += 1;
++	WCHAR *wtext = (WCHAR*)uiprivAlloc(len * sizeof(WCHAR), "WCHAR[]");
++
++	if (!SendMessageW(hwnd, msg, (WPARAM)wtext, len)) {
++		// on error, return an empty string to be safe
++		*wtext = L'\0';
++	}
++	char *text;
++	text = toUTF8(wtext);
++	uiprivFree(wtext);
++	return text;
++}
++
++static int setPlaceholder(HWND hwnd, const char *text, UINT msg)
++{
++	WCHAR *wtext;
++	wtext = toUTF16(text);
++	int len = wcslen(wtext);
++	// This won't work for multi-line entries and read-only entries.
++	if (!SendMessageW(hwnd, msg, FALSE, (LPARAM)wtext)) {
++		logLastError(L"error setting placeholder text");
++		// on error, return 0 as the string length to be safe
++		len = 0;
++	}
++	uiprivFree(wtext);
++
++	// Need the string length for getPlaceholder().
++	// Because there is no way to get it via winapi.
++	return len;
++}
++
++char *uiprivEntryPlaceholder(HWND hwnd, int len)
++{
++	return getPlaceholder(hwnd, len, EM_GETCUEBANNER);
++}
++
++int uiprivSetEntryPlaceholder(HWND hwnd, const char *text)
++{
++	return setPlaceholder(hwnd, text, EM_SETCUEBANNER);
++}
++
++char *uiprivComboboxPlaceholder(HWND hwnd, int len)
++{
++	return getPlaceholder(hwnd, len, CB_GETCUEBANNER);
++}
++
++int uiprivSetComboboxPlaceholder(HWND hwnd, const char *text)
++{
++	return setPlaceholder(hwnd, text, CB_SETCUEBANNER);
++}
++
+ int uiprivStricmp(const char *a, const char *b)
+ {
+ 	WCHAR *wa, *wb;
+diff --git a/windows/uipriv_windows.hpp b/windows/uipriv_windows.hpp
+index d3c1e413a..0b72dfdc0 100644
+--- a/windows/uipriv_windows.hpp
++++ b/windows/uipriv_windows.hpp
+@@ -83,6 +83,10 @@ extern void invalidateRect(HWND hwnd, RECT *r, BOOL erase);
+ extern WCHAR *windowTextAndLen(HWND hwnd, LRESULT *len);
+ extern WCHAR *windowText(HWND hwnd);
+ extern void setWindowText(HWND hwnd, WCHAR *wtext);
++extern char *uiprivEntryPlaceholder(HWND hwnd, int len);
++extern int uiprivSetEntryPlaceholder(HWND hwnd, const char *text);
++extern char *uiprivComboboxPlaceholder(HWND hwnd, int len);
++extern int uiprivSetComboboxPlaceholder(HWND hwnd, const char *text);
+ 
+ // init.cpp
+ extern HINSTANCE hInstance;

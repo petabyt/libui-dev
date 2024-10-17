@@ -1,0 +1,67 @@
+diff --git a/common/meson.build b/common/meson.build
+index 3146add26..e6cb84972 100644
+--- a/common/meson.build
++++ b/common/meson.build
+@@ -14,4 +14,5 @@ libui_sources += [
+ 	'common/tablevalue.c',
+ 	'common/userbugs.c',
+ 	'common/utf.c',
++	'common/version.c',
+ ]
+diff --git a/common/version.c b/common/version.c
+new file mode 100644
+index 000000000..eda3c41b7
+--- /dev/null
++++ b/common/version.c
+@@ -0,0 +1,9 @@
++#include "../ui.h"
++#include "uipriv.h"
++
++#include "config.h"
++
++const char *uiVersion(void)
++{
++	return UI_VERSION;
++}
+diff --git a/config.h.in b/config.h.in
+new file mode 100644
+index 000000000..973b14577
+--- /dev/null
++++ b/config.h.in
+@@ -0,0 +1 @@
++#define UI_VERSION "@version@"
+diff --git a/meson.build b/meson.build
+index 6851b1f78..17059d479 100644
+--- a/meson.build
++++ b/meson.build
+@@ -175,6 +175,18 @@ install_headers('ui.h')
+ 
+ # TODO when the API is stable enough to be versioned, create a pkg-config file (https://mesonbuild.com/Pkgconfig-module.html) and a declare_dependency() section too
+ 
++conf_data = configuration_data()
++git_hash_short = run_command('git', 'rev-parse', '--short', 'HEAD', check: true)
++git_tag = run_command('git', 'describe', '--exact-match', '--tags', check: false)
++if git_tag.returncode() == 0
++	conf_data.set('version', git_tag.stdout().strip())
++else
++	conf_data.set('version', git_hash_short.stdout().strip())
++endif
++configure_file(input: 'config.h.in',
++	output: 'config.h',
++	configuration: conf_data)
++
+ libui_binary_deps = []
+ if libui_mode == 'static'
+ 	libui_binary_deps = libui_deps
+diff --git a/ui.h b/ui.h
+index af6868029..b56f1e759 100644
+--- a/ui.h
++++ b/ui.h
+@@ -61,6 +61,7 @@ struct uiInitOptions {
+ 	size_t Size;
+ };
+ 
++_UI_EXTERN const char *uiVersion(void);
+ _UI_EXTERN const char *uiInit(uiInitOptions *options);
+ _UI_EXTERN void uiUninit(void);
+ _UI_EXTERN void uiFreeInitError(const char *err);

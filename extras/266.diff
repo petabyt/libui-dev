@@ -1,0 +1,479 @@
+diff --git a/darwin/meson.build b/darwin/meson.build
+index dacc3d18..e942fdea 100644
+--- a/darwin/meson.build
++++ b/darwin/meson.build
+@@ -46,6 +46,7 @@ libui_sources += [
+ 	'darwin/table.m',
+ 	'darwin/tablecolumn.m',
+ 	'darwin/text.m',
++	'darwin/tooltip.m',
+ 	'darwin/undocumented.m',
+ 	'darwin/util.m',
+ 	'darwin/window.m',
+diff --git a/darwin/tooltip.m b/darwin/tooltip.m
+new file mode 100644
+index 00000000..04a6f1cc
+--- /dev/null
++++ b/darwin/tooltip.m
+@@ -0,0 +1,12 @@
++#include "uipriv_darwin.h"
++
++// https://developer.apple.com/documentation/appkit/nsview/1483541-tooltip?language=objc
++
++void uiControlSetTooltip(uiControl *c, const char *tooltip) {
++	NSView *view = (NSView *)uiControlHandle(c);
++	if (tooltip == NULL) {
++		view.toolTip = nil;
++	} else {
++		view.toolTip = uiprivToNSString(tooltip);
++	}
++}
+diff --git a/ui.h b/ui.h
+index cfb801e3..9a972d9b 100644
+--- a/ui.h
++++ b/ui.h
+@@ -4008,6 +4008,18 @@ _UI_EXTERN void uiTableSetSelection(uiTable *t, uiTableSelection *sel);
+  */
+ _UI_EXTERN void uiFreeTableSelection(uiTableSelection* s);
+ 
++/**
++ * Sets the control tooltip.
++ *
++ * @param c uiControl instance.
++ * @param tooltip Control tooltip.\n
++ *             A valid, `NULL` terminated UTF-8 string.\n
++ *             Data is copied internally. Ownership is not transferred.
++ * @note Setting `NULL` resets the tooltip to the default value.
++ * @memberof uiControl
++ */
++_UI_EXTERN void uiControlSetTooltip(uiControl *c, const char *tooltip);
++
+ #ifdef __cplusplus
+ }
+ #endif
+diff --git a/ui_windows.h b/ui_windows.h
+index 9e472451..7126f6f9 100644
+--- a/ui_windows.h
++++ b/ui_windows.h
+@@ -20,6 +20,7 @@ struct uiWindowsControl {
+ 	// TODO this should be int on both os x and windows
+ 	BOOL enabled;
+ 	BOOL visible;
++	void *tooltips;
+ 	void (*SyncEnableState)(uiWindowsControl *, int);
+ 	void (*SetParentHWND)(uiWindowsControl *, HWND);
+ 	void (*MinimumSize)(uiWindowsControl *, int *, int *);
+@@ -42,6 +43,7 @@ _UI_EXTERN void uiWindowsControlChildVisibilityChanged(uiWindowsControl *);
+ #define uiWindowsControlDefaultDestroy(type) \
+ 	static void type ## Destroy(uiControl *c) \
+ 	{ \
++		uiprivDestroyTooltip(c); \
+ 		uiWindowsEnsureDestroyWindow(type(c)->hwnd); \
+ 		uiFreeControl(c); \
+ 	}
+@@ -185,7 +187,9 @@ _UI_EXTERN void uiWindowsControlChildVisibilityChanged(uiWindowsControl *);
+ 	uiWindowsControl(var)->AssignControlIDZOrder = type ## AssignControlIDZOrder; \
+ 	uiWindowsControl(var)->ChildVisibilityChanged = type ## ChildVisibilityChanged; \
+ 	uiWindowsControl(var)->visible = 1; \
+-	uiWindowsControl(var)->enabled = 1;
++	uiWindowsControl(var)->enabled = 1; \
++	uiWindowsControl(var)->tooltips = NULL;
++
+ // TODO document
+ _UI_EXTERN uiWindowsControl *uiWindowsAllocControl(size_t n, uint32_t typesig, const char *typenamestr);
+ 
+diff --git a/unix/meson.build b/unix/meson.build
+index 1c2ebcb9..69b99e76 100644
+--- a/unix/meson.build
++++ b/unix/meson.build
+@@ -43,6 +43,7 @@ libui_sources += [
+ 	'unix/table.c',
+ 	'unix/tablemodel.c',
+ 	'unix/text.c',
++	'unix/tooltip.c',
+ 	'unix/util.c',
+ 	'unix/window.c',
+ ]
+diff --git a/unix/tooltip.c b/unix/tooltip.c
+new file mode 100644
+index 00000000..4063d77a
+--- /dev/null
++++ b/unix/tooltip.c
+@@ -0,0 +1,9 @@
++#include "uipriv_unix.h"
++
++void uiControlSetTooltip(uiControl *c, const char *tooltip) {
++	if (tooltip == NULL) {
++		gtk_widget_set_has_tooltip(GTK_WIDGET(uiControlHandle(c)), FALSE);
++	} else {
++		gtk_widget_set_tooltip_text(GTK_WIDGET(uiControlHandle(c)), tooltip);
++	}
++}
+diff --git a/windows/box.cpp b/windows/box.cpp
+index 1b7670f3..4aba80d2 100644
+--- a/windows/box.cpp
++++ b/windows/box.cpp
+@@ -127,6 +127,7 @@ static void uiBoxDestroy(uiControl *c)
+ 		uiControlDestroy(bc.c);
+ 	}
+ 	delete b->controls;
++	uiprivDestroyTooltip(c);
+ 	uiWindowsEnsureDestroyWindow(b->hwnd);
+ 	uiFreeControl(uiControl(b));
+ }
+diff --git a/windows/button.cpp b/windows/button.cpp
+index d8913ec7..20a21004 100644
+--- a/windows/button.cpp
++++ b/windows/button.cpp
+@@ -24,6 +24,7 @@ static void uiButtonDestroy(uiControl *c)
+ 	uiButton *b = uiButton(c);
+ 
+ 	uiWindowsUnregisterWM_COMMANDHandler(b->hwnd);
++	uiprivDestroyTooltip(c);
+ 	uiWindowsEnsureDestroyWindow(b->hwnd);
+ 	uiFreeControl(uiControl(b));
+ }
+diff --git a/windows/checkbox.cpp b/windows/checkbox.cpp
+index 3d8c92e3..bdf0d933 100644
+--- a/windows/checkbox.cpp
++++ b/windows/checkbox.cpp
+@@ -32,8 +32,9 @@ static void uiCheckboxDestroy(uiControl *cc)
+ 	uiCheckbox *c = uiCheckbox(cc);
+ 
+ 	uiWindowsUnregisterWM_COMMANDHandler(c->hwnd);
++	uiprivDestroyTooltip(cc);
+ 	uiWindowsEnsureDestroyWindow(c->hwnd);
+-	uiFreeControl(uiControl(c));
++	uiFreeControl(cc);
+ }
+ 
+ uiWindowsControlAllDefaultsExceptDestroy(uiCheckbox)
+diff --git a/windows/colorbutton.cpp b/windows/colorbutton.cpp
+index c1ba6954..358a7cf3 100644
+--- a/windows/colorbutton.cpp
++++ b/windows/colorbutton.cpp
+@@ -18,6 +18,7 @@ static void uiColorButtonDestroy(uiControl *c)
+ 
+ 	uiWindowsUnregisterWM_COMMANDHandler(b->hwnd);
+ 	uiWindowsUnregisterWM_NOTIFYHandler(b->hwnd);
++	uiprivDestroyTooltip(c);
+ 	uiWindowsEnsureDestroyWindow(b->hwnd);
+ 	uiFreeControl(uiControl(b));
+ }
+diff --git a/windows/combobox.cpp b/windows/combobox.cpp
+index daf8a714..b655cb9b 100644
+--- a/windows/combobox.cpp
++++ b/windows/combobox.cpp
+@@ -26,8 +26,9 @@ void uiComboboxDestroy(uiControl *cc)
+ 	uiCombobox *c = uiCombobox(cc);
+ 
+ 	uiWindowsUnregisterWM_COMMANDHandler(c->hwnd);
++	uiprivDestroyTooltip(cc);
+ 	uiWindowsEnsureDestroyWindow(c->hwnd);
+-	uiFreeControl(uiControl(c));
++	uiFreeControl(cc);
+ }
+ 
+ uiWindowsControlAllDefaultsExceptDestroy(uiCombobox)
+diff --git a/windows/datetimepicker.cpp b/windows/datetimepicker.cpp
+index 32546cf8..88be48d5 100644
+--- a/windows/datetimepicker.cpp
++++ b/windows/datetimepicker.cpp
+@@ -106,6 +106,7 @@ static void uiDateTimePickerDestroy(uiControl *c)
+ 
+ 	uiWindowsUnregisterReceiveWM_WININICHANGE(d->hwnd);
+ 	uiWindowsUnregisterWM_NOTIFYHandler(d->hwnd);
++	uiprivDestroyTooltip(c);
+ 	uiWindowsEnsureDestroyWindow(d->hwnd);
+ 	uiFreeControl(uiControl(d));
+ }
+diff --git a/windows/editablecombo.cpp b/windows/editablecombo.cpp
+index f1831bb6..f5ca6ab6 100644
+--- a/windows/editablecombo.cpp
++++ b/windows/editablecombo.cpp
+@@ -38,8 +38,9 @@ void uiEditableComboboxDestroy(uiControl *cc)
+ 	uiEditableCombobox *c = uiEditableCombobox(cc);
+ 
+ 	uiWindowsUnregisterWM_COMMANDHandler(c->hwnd);
++	uiprivDestroyTooltip(cc);
+ 	uiWindowsEnsureDestroyWindow(c->hwnd);
+-	uiFreeControl(uiControl(c));
++	uiFreeControl(cc);
+ }
+ 
+ uiWindowsControlAllDefaultsExceptDestroy(uiEditableCombobox)
+diff --git a/windows/entry.cpp b/windows/entry.cpp
+index d6abf2ab..51199729 100644
+--- a/windows/entry.cpp
++++ b/windows/entry.cpp
+@@ -27,6 +27,7 @@ static void uiEntryDestroy(uiControl *c)
+ 	uiEntry *e = uiEntry(c);
+ 
+ 	uiWindowsUnregisterWM_COMMANDHandler(e->hwnd);
++	uiprivDestroyTooltip(c);
+ 	uiWindowsEnsureDestroyWindow(e->hwnd);
+ 	uiFreeControl(uiControl(e));
+ }
+diff --git a/windows/fontbutton.cpp b/windows/fontbutton.cpp
+index a57b13f4..f39b3128 100644
+--- a/windows/fontbutton.cpp
++++ b/windows/fontbutton.cpp
+@@ -17,6 +17,7 @@ static void uiFontButtonDestroy(uiControl *c)
+ 
+ 	uiWindowsUnregisterWM_COMMANDHandler(b->hwnd);
+ 	uiprivDestroyFontDialogParams(&(b->params));
++	uiprivDestroyTooltip(c);
+ 	uiWindowsEnsureDestroyWindow(b->hwnd);
+ 	uiFreeControl(uiControl(b));
+ }
+diff --git a/windows/form.cpp b/windows/form.cpp
+index bc09740e..e3f2a72d 100644
+--- a/windows/form.cpp
++++ b/windows/form.cpp
+@@ -132,6 +132,7 @@ static void uiFormDestroy(uiControl *c)
+ 		uiWindowsEnsureDestroyWindow(fc.label);
+ 	}
+ 	delete f->controls;
++	uiprivDestroyTooltip(c);
+ 	uiWindowsEnsureDestroyWindow(f->hwnd);
+ 	uiFreeControl(uiControl(f));
+ }
+diff --git a/windows/grid.cpp b/windows/grid.cpp
+index c902c71b..028534bf 100644
+--- a/windows/grid.cpp
++++ b/windows/grid.cpp
+@@ -420,6 +420,7 @@ static void uiGridDestroy(uiControl *c)
+ 	}
+ 	delete g->indexof;
+ 	delete g->children;
++	uiprivDestroyTooltip(c);
+ 	uiWindowsEnsureDestroyWindow(g->hwnd);
+ 	uiFreeControl(uiControl(g));
+ }
+diff --git a/windows/group.cpp b/windows/group.cpp
+index 1a2cc6ed..3d319f70 100644
+--- a/windows/group.cpp
++++ b/windows/group.cpp
+@@ -61,6 +61,7 @@ static void uiGroupDestroy(uiControl *c)
+ 		uiControlSetParent(g->child, NULL);
+ 		uiControlDestroy(g->child);
+ 	}
++	uiprivDestroyTooltip(c);
+ 	uiWindowsEnsureDestroyWindow(g->hwnd);
+ 	uiFreeControl(uiControl(g));
+ }
+diff --git a/windows/meson.build b/windows/meson.build
+index 80c7bd82..fbb814dd 100644
+--- a/windows/meson.build
++++ b/windows/meson.build
+@@ -59,6 +59,7 @@ libui_sources += [
+ 	'windows/tablemetrics.cpp',
+ 	'windows/tabpage.cpp',
+ 	'windows/text.cpp',
++	'windows/tooltip.cpp',
+ 	'windows/utf16.cpp',
+ 	'windows/utilwin.cpp',
+ 	'windows/window.cpp',
+diff --git a/windows/multilineentry.cpp b/windows/multilineentry.cpp
+index 5740b49d..d7ecb30c 100644
+--- a/windows/multilineentry.cpp
++++ b/windows/multilineentry.cpp
+@@ -29,6 +29,7 @@ static void uiMultilineEntryDestroy(uiControl *c)
+ 	uiMultilineEntry *e = uiMultilineEntry(c);
+ 
+ 	uiWindowsUnregisterWM_COMMANDHandler(e->hwnd);
++	uiprivDestroyTooltip(c);
+ 	uiWindowsEnsureDestroyWindow(e->hwnd);
+ 	uiFreeControl(uiControl(e));
+ }
+diff --git a/windows/radiobuttons.cpp b/windows/radiobuttons.cpp
+index 0684a270..0a502f3d 100644
+--- a/windows/radiobuttons.cpp
++++ b/windows/radiobuttons.cpp
+@@ -48,6 +48,7 @@ static void uiRadioButtonsDestroy(uiControl *c)
+ 		uiWindowsEnsureDestroyWindow(hwnd);
+ 	}
+ 	delete r->hwnds;
++	uiprivDestroyTooltip(c);
+ 	uiWindowsEnsureDestroyWindow(r->hwnd);
+ 	uiFreeControl(uiControl(r));
+ }
+diff --git a/windows/slider.cpp b/windows/slider.cpp
+index b3ba297e..feacc809 100644
+--- a/windows/slider.cpp
++++ b/windows/slider.cpp
+@@ -33,6 +33,7 @@ static void uiSliderDestroy(uiControl *c)
+ 	uiSliderSetHasToolTip(s, 1);
+ 
+ 	uiWindowsUnregisterWM_HSCROLLHandler(s->hwnd);
++	uiprivDestroyTooltip(c);
+ 	uiWindowsEnsureDestroyWindow(s->hwnd);
+ 	uiFreeControl(uiControl(s));
+ }
+diff --git a/windows/spinbox.cpp b/windows/spinbox.cpp
+index 57fb8d64..a5bee9d8 100644
+--- a/windows/spinbox.cpp
++++ b/windows/spinbox.cpp
+@@ -63,6 +63,7 @@ static void uiSpinboxDestroy(uiControl *c)
+ 	uiSpinbox *s = uiSpinbox(c);
+ 
+ 	uiWindowsUnregisterWM_COMMANDHandler(s->edit);
++	uiprivDestroyTooltip(c);
+ 	uiWindowsEnsureDestroyWindow(s->updown);
+ 	uiWindowsEnsureDestroyWindow(s->edit);
+ 	uiWindowsEnsureDestroyWindow(s->hwnd);
+diff --git a/windows/tab.cpp b/windows/tab.cpp
+index ef621f1c..12612bff 100644
+--- a/windows/tab.cpp
++++ b/windows/tab.cpp
+@@ -102,6 +102,7 @@ static void uiTabDestroy(uiControl *c)
+ 	}
+ 	delete t->pages;
+ 	uiWindowsUnregisterWM_NOTIFYHandler(t->tabHWND);
++	uiprivDestroyTooltip(c);
+ 	uiWindowsEnsureDestroyWindow(t->tabHWND);
+ 	uiWindowsEnsureDestroyWindow(t->hwnd);
+ 	uiFreeControl(uiControl(t));
+diff --git a/windows/table.cpp b/windows/table.cpp
+index 01e7dcd9..2cb307b6 100644
+--- a/windows/table.cpp
++++ b/windows/table.cpp
+@@ -607,6 +607,7 @@ static void uiTableDestroy(uiControl *c)
+ 		// TODO
+ 	}
+ 	uiWindowsUnregisterWM_NOTIFYHandler(t->hwnd);
++	uiprivDestroyTooltip(c);
+ 	uiWindowsEnsureDestroyWindow(t->hwnd);
+ 	// detach table from model
+ 	for (it = model->tables->begin(); it != model->tables->end(); it++) {
+diff --git a/windows/tooltip.cpp b/windows/tooltip.cpp
+new file mode 100644
+index 00000000..7f3e6fdb
+--- /dev/null
++++ b/windows/tooltip.cpp
+@@ -0,0 +1,100 @@
++#include "uipriv_windows.hpp"
++
++// This doesn't work for containers
++static HWND createTooltipForControl(HWND hparent, const wchar_t* text)
++{
++	HWND hwndTT = CreateWindowEx(NULL, TOOLTIPS_CLASS, NULL,
++		WS_POPUP | TTS_NOPREFIX | TTS_ALWAYSTIP,
++		CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
++		hparent, NULL, hInstance, NULL);
++
++	if (!hwndTT) {
++		logLastError(L"Failed to create tooltip window.");
++		return NULL;
++	}
++
++	SetWindowPos(hwndTT, HWND_TOPMOST, 0, 0, 0, 0,
++		SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
++
++	TTTOOLINFO ti = { 0 };
++	ti.cbSize = sizeof(ti);
++	ti.uFlags = TTF_IDISHWND | TTF_SUBCLASS;
++	ti.uId = (UINT_PTR) hparent;
++	ti.hinst = hInstance;
++	ti.lpszText = (LPWSTR) text;
++
++	if (!SendMessage(hwndTT, TTM_ADDTOOL, 0, (LPARAM) &ti)) {
++		logLastError(L"Failed to set rect to tooltip window.");
++		uiWindowsEnsureDestroyWindow(hwndTT);
++		return NULL;
++	}
++
++	// Enable multiline tooltips
++	SendMessage(hwndTT, TTM_SETMAXTIPWIDTH, 0, 0);
++	return hwndTT;
++}
++
++static void addTooltipToControl(HWND hparent,
++	const wchar_t *wtext, std::vector<HWND> *tooltips)
++{
++	HWND tt = createTooltipForControl(hparent, wtext);
++	if (tt)
++		tooltips->push_back(tt);
++}
++
++static HWND addTooltipToChild(HWND hparent, HWND child_after,
++	const wchar_t *class_name, const wchar_t *wtext, std::vector<HWND> *tooltips)
++{
++	HWND child;
++	HWND tt;
++	child = FindWindowExW(hparent, child_after, class_name, NULL);
++	if (!child) return NULL;
++
++	addTooltipToControl(child, wtext, tooltips);
++	return child;
++}
++
++void uiControlSetTooltip(uiControl *c, const char *tooltip)
++{
++	uiprivDestroyTooltip(c);
++	
++	if (tooltip == NULL) return;
++
++	wchar_t *wtext = toUTF16(tooltip);
++	HWND hparent = (HWND) uiControlHandle(c);
++	HWND child = NULL;
++	std::vector<HWND> *tooltips = new std::vector<HWND>(0);
++
++	switch (c->TypeSignature) {
++	case uiEditableComboboxSignature:
++	case uiSpinboxSignature:
++		child = addTooltipToChild(hparent, NULL, L"edit", wtext, tooltips);
++		break;
++	case uiRadioButtonsSignature:
++		// This works only for existing buttons.
++		// You should run uiRadioButtonsAppend before calling uiControlSetTooltip.
++		do {
++			child = addTooltipToChild(hparent, child, L"button", wtext, tooltips);
++		} while (child);
++		break;
++	default:
++		addTooltipToControl(hparent, wtext, tooltips);
++	}
++
++	uiprivFree(wtext);
++	uiWindowsControl(c)->tooltips = tooltips;
++}
++
++void uiprivDestroyTooltip(uiControl* c)
++{
++	std::vector<HWND> *tooltips = (std::vector<HWND>*) uiWindowsControl(c)->tooltips;
++
++	if (tooltips == NULL) return;
++
++	for (HWND tt : *tooltips) {
++		uiWindowsEnsureDestroyWindow(tt);
++	}
++	delete tooltips;
++	uiWindowsControl(c)->tooltips = NULL;
++}
++
+diff --git a/windows/uipriv_windows.hpp b/windows/uipriv_windows.hpp
+index d3c1e413..bf6340d4 100644
+--- a/windows/uipriv_windows.hpp
++++ b/windows/uipriv_windows.hpp
+@@ -174,5 +174,8 @@ extern void uiprivUninitImage(void);
+ extern IWICBitmap *uiprivImageAppropriateForDC(uiImage *i, HDC dc);
+ extern HRESULT uiprivWICToGDI(IWICBitmap *b, HDC dc, int width, int height, HBITMAP *hb);
+ 
++// tooltip.cpp
++extern void uiprivDestroyTooltip(uiControl* c);
++
+ #endif
+ 
+diff --git a/windows/window.cpp b/windows/window.cpp
+index 398ecb97..3e0b0cce 100644
+--- a/windows/window.cpp
++++ b/windows/window.cpp
+@@ -189,6 +189,7 @@ static void uiWindowDestroy(uiControl *c)
+ 	if (w->menubar != NULL)
+ 		freeMenubar(w->menubar);
+ 	// and finally free ourselves
++	uiprivDestroyTooltip(c);
+ 	windows.erase(w);
+ 	uiWindowsEnsureDestroyWindow(w->hwnd);
+ 	uiFreeControl(uiControl(w));

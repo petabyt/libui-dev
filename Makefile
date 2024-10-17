@@ -34,12 +34,16 @@ LDFLAGS += $(shell pkg-config --libs gtk+-3.0)
 libui.so: $(O_FILES)
 	$(CC) -shared $(O_FILES) $(LDFLAGS) -o libui.so
 
+ARCH := $(shell uname -m)
 install: libui.so
-	sudo rm -rf /usr/local/lib/x86_64-linux-gnu/libui.so
-	sudo cp libui.so /usr/local/lib/x86_64-linux-gnu/libui.so
+	sudo rm -rf /usr/local/lib/$(ARCH)-linux-gnu/libui.so
+	sudo cp libui.so /usr/local/lib/$(ARCH)-linux-gnu/libui.so
 	sudo rm -rf /usr/lib/libui.so
 	sudo cp libui.so /usr/lib/libui.so
 	sudo cp $(LIBUI)/ui.h /usr/include/ui.h
+
+ex.out: libui.so example/main.o
+	$(CC) $(CFLAGS) example/main.o -L. -lui $(LDFLAGS) -o ex.out
 
 endif # ------------------------------------
 
@@ -83,4 +87,4 @@ clean:
 	make TARGET=m clean_
 
 clean_:
-	$(RM) $(O_FILES) *.o *.exe *.out *.res *.so *.a build *.dylib example/*.out ide/*.o *.res
+	$(RM) $(O_FILES) *.o *.exe *.out *.res *.so *.a build *.dylib example/*.out ide/*.o *.res *.dll
