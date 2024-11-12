@@ -125,6 +125,11 @@ const char *uiInit(uiInitOptions *o)
 	if (registerAreaClass(hDefaultIcon, hDefaultCursor) == 0)
 		return ieLastErr("registering uiArea window class");
 
+	int extern_win_init(HICON hDefaultIcon, HCURSOR hDefaultCursor);
+	if (extern_win_init(hDefaultIcon, hDefaultCursor)) {
+		return ieLastErr("Error");
+	}
+
 	if (registerMessageFilter() == 0)
 		return ieLastErr("registering libui message filter");
 
