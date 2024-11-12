@@ -7,7 +7,7 @@ This is a fork of libui-ng with some extras:
 - [x] Windows DPI scaling (4k)
 - [ ] uiScroll (WIP)
 - [ ] uiImage as a widget
-- [ ] Tooltips (266)
+- [x] Tooltips (266)
 - [ ] Placeholders (224)
 - [ ] uiImageButton
 - [ ] OpenGLArea (405)
