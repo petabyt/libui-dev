@@ -1,7 +1,7 @@
 LIBUI_COMMON := $(patsubst %.c,%.o,$(wildcard common/*.c))
 LIBUI_COMMON := $(filter-out %OLD_table.o,$(LIBUI_COMMON))
 
-CFLAGS := -I. -g
+CFLAGS := -I. -Iinclude/ -g
 
 all:
 	echo "see Makefile"

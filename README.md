@@ -12,6 +12,8 @@ This is a fork of libui-ng with some extras:
 - [ ] uiImageButton
 - [ ] OpenGLArea (405)
 
+# Build system
+Meson build system is preserved, but a make-based system is added for cross-compilation.
 ```
 # Compile for MinGW from Linux
 make TARGET=w libui_win64.a install
@@ -28,3 +30,7 @@ make TARGET=m libui.dylib
 - [ ] X86_64 MacOS (.dylib, .app)
 - [ ] ARM64 Linux
 - [ ] ARM64 MacOS
+
+Merged PRs:
+- https://github.com/libui-ng/libui-ng/pull/266 / https://github.com/libui-ng/libui-ng/pull/256
+

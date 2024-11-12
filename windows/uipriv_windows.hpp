@@ -2,8 +2,8 @@
 #define __LIBUI_UIPRIV_WINDOWS_HPP__
 
 #include "winapi.hpp"
-#include "../ui.h"
-#include "../ui_windows.h"
+#include <ui.h>
+#include <ui_windows.h>
 #include "../common/uipriv.h"
 #include "resources.hpp"
 #include "compilerver.hpp"
@@ -173,6 +173,9 @@ extern HRESULT uiprivInitImage(void);
 extern void uiprivUninitImage(void);
 extern IWICBitmap *uiprivImageAppropriateForDC(uiImage *i, HDC dc);
 extern HRESULT uiprivWICToGDI(IWICBitmap *b, HDC dc, int width, int height, HBITMAP *hb);
+
+// tooltip.cpp
+extern void uiprivDestroyTooltip(uiControl* c);
 
 #endif
 

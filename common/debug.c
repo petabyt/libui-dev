@@ -1,5 +1,5 @@
 // 13 may 2016
-#include "../ui.h"
+#include <ui.h>
 #include "uipriv.h"
 
 void uiprivDoImplBug(const char *file, const char *line, const char *func, const char *format, ...)

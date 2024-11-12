@@ -1,5 +1,5 @@
 // 21 june 2016
-#include "../ui.h"
+#include <ui.h>
 #include "uipriv.h"
 
 void *uiTableModelGiveInt(int i)

@@ -1,6 +1,6 @@
 // 25 february 2018
 #include <stdlib.h>
-#include "../ui.h"
+#include <ui.h>
 #include "uipriv.h"
 #include "attrstr.h"
 

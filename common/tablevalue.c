@@ -1,5 +1,5 @@
 // 3 june 2018
-#include "../ui.h"
+#include <ui.h>
 #include "uipriv.h"
 #include "table.h"
 

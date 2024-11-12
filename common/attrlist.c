@@ -1,5 +1,5 @@
 // 16 december 2016
-#include "../ui.h"
+#include <ui.h>
 #include "uipriv.h"
 #include "attrstr.h"
 

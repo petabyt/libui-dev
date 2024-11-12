@@ -149,13 +149,13 @@ libui_rpath = ''
 subdir('common')
 if libui_OS == 'windows'
 	subdir('windows')
-	install_headers('ui_windows.h')
+	install_headers('include/ui_windows.h')
 elif libui_OS == 'darwin'
 	subdir('darwin')
-	install_headers('ui_darwin.h')
+	install_headers('include/ui_darwin.h')
 else
 	subdir('unix')
-	install_headers('ui_unix.h')
+	install_headers('include/ui_unix.h')
 endif
 libui_libui = library('ui', libui_sources,
 	dependencies: libui_deps,
@@ -167,8 +167,9 @@ libui_libui = library('ui', libui_sources,
 	c_args: ['-Dlibui_EXPORTS'],
 	cpp_args: ['-Dlibui_EXPORTS'],
 	objc_args: ['-Dlibui_EXPORTS'],
-	link_args: libui_libui_link_args)
-install_headers('ui.h')
+	link_args: libui_libui_link_args,
+	include_directories : include_directories('include'))
+install_headers('include/ui.h')
 
 # TODO when the API is stable enough to be versioned, create a pkg-config file (https://mesonbuild.com/Pkgconfig-module.html) and a declare_dependency() section too
 
@@ -178,7 +179,7 @@ if libui_mode == 'static'
 endif
 
 # Export symbols for use of libui as a meson subproject
-libui_dep = declare_dependency(include_directories: include_directories('.'),
+libui_dep = declare_dependency(include_directories: include_directories('./include'),
 	link_with : libui_libui)
 
 if get_option('tests')
