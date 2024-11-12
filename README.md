@@ -3,11 +3,14 @@ A portable UI library written in C, which uses the native UI of the operating sy
 Like wxWidgets, but in C. And much more bare-bones.
 
 This is a fork of libui-ng with some extras:
-- [x] uiScroll
 - [x] uiWindowSetIcon
-- [x] DPI scaling (4k)
+- [x] Windows DPI scaling (4k)
+- [ ] uiScroll (WIP)
 - [ ] uiImage as a widget
-- [ ] Tooltips
+- [ ] Tooltips (266)
+- [ ] Placeholders (224)
+- [ ] uiImageButton
+- [ ] OpenGLArea (405)
 
 ```
 # Compile for MinGW from Linux
