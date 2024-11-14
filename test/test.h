@@ -6,7 +6,7 @@
 #include <string.h>
 #include <math.h>
 #include <limits.h>
-#include "../ui.h"
+#include <ui.h>
 
 // main.c
 extern void die(const char *, ...);

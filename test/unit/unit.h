@@ -8,7 +8,7 @@
 
 #include <stdlib.h>
 
-#include "../../ui.h"
+#include <ui.h>
 
 /**
  * Unit test run functions.
