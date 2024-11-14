@@ -4,7 +4,7 @@ windows = import('windows')
 
 libui_sources += [
 	'extras/win_init.cpp',
-	'extras/scroll.cpp'
+	'extras/scroll.cpp',
 	'windows/alloc.cpp',
 	'windows/area.cpp',
 	'windows/areadraw.cpp',
