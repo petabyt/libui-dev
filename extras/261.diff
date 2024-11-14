@@ -241,10 +241,10 @@ index 00000000..47eb3e88
 +	return cmocka_run_group_tests_name("uiWindow", tests, unitTestsSetup, unitTestsTeardown);
 +}
 +
-diff --git a/ui.h b/ui.h
+diff --git a/include/ui.h b/include/ui.h
 index cfb801e3..7c3c4b95 100644
---- a/ui.h
-+++ b/ui.h
+--- a/include/ui.h
++++ b/include/ui.h
 @@ -487,7 +487,7 @@ _UI_EXTERN void uiWindowSetChild(uiWindow *w, uiControl *child);
   * Returns whether or not the window has a margin.
   *

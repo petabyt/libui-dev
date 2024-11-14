@@ -38,7 +38,7 @@ install: libui.so
 	sudo cp libui.so /usr/local/lib/$(ARCH)-linux-gnu/libui.so
 	sudo rm -rf /usr/lib/libui.so
 	sudo cp libui.so /usr/lib/libui.so
-	sudo cp $(LIBUI)/ui.h /usr/include/ui.h
+	sudo cp include/ui.h /usr/include/ui.h
 
 ex.out: libui.so example/main.o
 	$(CC) $(CFLAGS) example/main.o -L. -lui $(LDFLAGS) -o ex.out

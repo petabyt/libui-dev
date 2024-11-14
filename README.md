@@ -1,14 +1,14 @@
 # libui-dev
-A portable UI library written in C, which uses the native UI of the operating system it runs on.  
+A fork of LibUI-ng - a portable UI library written in C, which uses the native UI of the operating system it runs on.  
 Like wxWidgets, but in C. And much more bare-bones.
 
-This is a fork of libui-ng with some extras:
+This adds a bunch of experimental features and fixes:
 - [x] uiWindowSetIcon
 - [x] Windows DPI scaling (4k)
 - [ ] uiScroll (WIP)
 - [ ] uiImage as a widget
 - [x] Tooltips (266)
-- [ ] Placeholders (224)
+- [x] Placeholders (224)
 - [ ] uiImageButton
 - [ ] OpenGLArea (405)
 
@@ -33,4 +33,4 @@ make TARGET=m libui.dylib
 
 Merged PRs:
 - https://github.com/libui-ng/libui-ng/pull/266 / https://github.com/libui-ng/libui-ng/pull/256
-
+- https://github.com/libui-ng/libui-ng/pull/224
