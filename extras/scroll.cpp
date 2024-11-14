@@ -194,11 +194,6 @@ void unregisterScrollClass(void)
 		logLastError(L"error unregistering uiScroll window class");
 }
 
-extern "C" {
-	void unregisterScrollClass(void);
-	ATOM registerScrollClass(HICON hDefaultIcon, HCURSOR hDefaultCursor);
-}
-
 static void scrollto(uiScroll *a, int which, struct scrollParams *p, int pos)
 {
 	SCROLLINFO si;

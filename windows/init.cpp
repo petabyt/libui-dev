@@ -2,9 +2,9 @@
 #include "uipriv_windows.hpp"
 #include "attrstr.hpp"
 
-int extern_win_init(HICON hDefaultIcon, HCURSOR hDefaultCursor);
-ATOM registerScrollClass(HICON hDefaultIcon, HCURSOR hDefaultCursor);
-int unregisterScrollClass(void);
+extern int extern_win_init(HICON hDefaultIcon, HCURSOR hDefaultCursor);
+extern ATOM registerScrollClass(HICON hDefaultIcon, HCURSOR hDefaultCursor);
+extern int unregisterScrollClass(void);
 
 HINSTANCE hInstance;
 int nCmdShow;
