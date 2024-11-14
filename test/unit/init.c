@@ -12,8 +12,7 @@ static void initUninitTwice(void **state)
 {
 	uiInitOptions o = {0};
 
-	printf("%s\n", uiInit(&o));
-//	assert_null(uiInit(&o));
+	assert_null(uiInit(&o));
 	uiUninit();
 
 	assert_null(uiInit(&o));
