@@ -4,7 +4,7 @@
 
 extern int extern_win_init(HICON hDefaultIcon, HCURSOR hDefaultCursor);
 extern ATOM registerScrollClass(HICON hDefaultIcon, HCURSOR hDefaultCursor);
-extern int unregisterScrollClass(void);
+extern void unregisterScrollClass(void);
 
 HINSTANCE hInstance;
 int nCmdShow;
