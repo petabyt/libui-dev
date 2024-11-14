@@ -86,3 +86,4 @@ clean:
 
 clean_:
 	$(RM) $(O_FILES) *.o *.exe *.out *.res *.so *.a build *.dylib example/*.out ide/*.o *.res *.dll
+	$(RM) `find windows unix darwin test examples -regex ".*\.\(o\|d\)"`

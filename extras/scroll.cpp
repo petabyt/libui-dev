@@ -188,6 +188,12 @@ ATOM registerScrollClass(HICON hDefaultIcon, HCURSOR hDefaultCursor)
 	return RegisterClassW(&wc);
 }
 
+void unregisterScrollClass(void)
+{
+	if (UnregisterClassW(scrollClass, hInstance) == 0)
+		logLastError(L"error unregistering uiScroll window class");
+}
+
 static void scrollto(uiScroll *a, int which, struct scrollParams *p, int pos)
 {
 	SCROLLINFO si;
@@ -606,3 +612,4 @@ uiScroll *uiNewScroll() {
 
 	return s;
 }
+

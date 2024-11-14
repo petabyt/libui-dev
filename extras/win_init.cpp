@@ -8,11 +8,11 @@ if (extern_win_init(hDefaultIcon, hDefaultCursor)) {
 */
 
 int extern_win_init(HICON hDefaultIcon, HCURSOR hDefaultCursor) {
-	extern ATOM registerScrollClass(HICON hDefaultIcon, HCURSOR hDefaultCursor);
-	if (registerScrollClass(hDefaultIcon, hDefaultCursor) == 0) {
-		puts("registering uiScroll window class");
-		return 1;
-	}
+	// extern ATOM registerScrollClass(HICON hDefaultIcon, HCURSOR hDefaultCursor);
+	// if (registerScrollClass(hDefaultIcon, hDefaultCursor) == 0) {
+	// 	puts("registering uiScroll window class");
+	// 	return 1;
+	// }
 
 	// Set DPI awareness
 	typedef void* fl_DPI_AWARENESS_CONTEXT;

@@ -2,6 +2,10 @@
 #include "uipriv_windows.hpp"
 #include "attrstr.hpp"
 
+int extern_win_init(HICON hDefaultIcon, HCURSOR hDefaultCursor);
+ATOM registerScrollClass(HICON hDefaultIcon, HCURSOR hDefaultCursor);
+int unregisterScrollClass(void);
+
 HINSTANCE hInstance;
 int nCmdShow;
 
@@ -125,7 +129,8 @@ const char *uiInit(uiInitOptions *o)
 	if (registerAreaClass(hDefaultIcon, hDefaultCursor) == 0)
 		return ieLastErr("registering uiArea window class");
 
-	int extern_win_init(HICON hDefaultIcon, HCURSOR hDefaultCursor);
+	registerScrollClass(hDefaultIcon, hDefaultCursor);
+
 	if (extern_win_init(hDefaultIcon, hDefaultCursor)) {
 		return ieLastErr("Error");
 	}
@@ -163,6 +168,7 @@ void uiUninit(void)
 	// no need to delete the default icon or cursor; see http://stackoverflow.com/questions/30603077/
 	uninitUtilWindow();
 	uninitAlloc();
+	unregisterScrollClass();
 }
 
 void uiFreeInitError(const char *err)
