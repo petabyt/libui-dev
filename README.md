@@ -9,6 +9,7 @@ This adds a bunch of experimental features and fixes:
 - [ ] uiImage as a widget
 - [x] Tooltips (266)
 - [x] Placeholders (224)
+- [x] Fix `uiWindowSetContentSize` ([261](https://github.com/libui-ng/libui-ng/pull/261))
 - [ ] uiImageButton
 - [ ] OpenGLArea (405)
 
