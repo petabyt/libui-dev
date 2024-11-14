@@ -34,7 +34,8 @@ unit = executable('unit', libui_unit_sources,
 	dependencies: [libui_binary_deps, cmocka_deps],
 	link_with: libui_libui,
 	gui_app: false,
-	install: false)
+	install: false,
+	include_directories : include_directories('../../include'))
 
 test('Unit Tests', unit)
 

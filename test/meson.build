@@ -46,7 +46,8 @@ executable('tester', libui_test_sources,
 	dependencies: libui_binary_deps,
 	link_with: libui_libui,
 	gui_app: false,
-	install: false)
+	install: false,
+	include_directories : include_directories('../include'))
 
 subdir('unit')
 subdir('qa')
