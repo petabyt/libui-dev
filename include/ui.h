@@ -939,6 +939,40 @@ typedef struct uiTab uiTab;
 #define uiTab(this) ((uiTab *) (this))
 
 /**
+ * Returns the index of the tab selected.
+ *
+ * @param c uiTab instance.
+ * @returns Index of the tab selected
+ * @memberof uiTab
+ */
+_UI_EXTERN int uiTabSelected(uiTab *t);
+
+/**
+ * Sets the tab selected.
+ *
+ * @param c uiTab instance.
+ * @param index Index of the tab to be selected
+ * @memberof uiTab
+ */
+_UI_EXTERN void uiTabSetSelected(uiTab *t, int index);
+
+/**
+ * Registers a callback for when a tab is selected.
+ *
+ * @param t uiTab instance.
+ * @param f Callback function.\n
+ *          @p sender Back reference to the instance that triggered the callback.\n
+ *          @p senderData User data registered with the sender instance.
+ * @param data User data to be passed to the callback.
+ *
+ * @note The callback is not triggered when calling uiTabSetSelected(),
+ * @note Only one callback can be registered at a time.
+ * @memberof uiTab
+ */
+_UI_EXTERN void uiTabOnSelected(uiTab *t,
+        void (*f)(uiTab *sender, void *senderData), void *data);
+
+/**
  * Appends a control in form of a page/tab with label.
  *
  * @param t uiTab instance.
@@ -4064,6 +4098,18 @@ _UI_EXTERN void uiFreeTableSelection(uiTableSelection* s);
  * @memberof uiControl
  */
 _UI_EXTERN void uiControlSetTooltip(uiControl *c, const char *tooltip);
+
+// Set an icon from an ICO icon buffer.
+_UI_EXTERN void uiWindowSetIcon(uiWindow *w, const void *data, size_t length);
+
+// WIP - not supported on all platforms yet
+typedef struct uiScroll uiScroll;
+_UI_EXTERN uiScroll *uiNewScroll();
+_UI_EXTERN void uiScrollSetChild(uiScroll *scroll, uiControl *ctl);
+
+// Experimental - use uiAttribute API on normal widgets
+_UI_EXTERN void uiLabelSetAttribute(uiLabel *label, uiAttribute *attr);
+
 
 #ifdef __cplusplus
 }

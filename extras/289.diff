@@ -1,0 +1,349 @@
+diff --git a/darwin/tab.m b/darwin/tab.m
+index 28c38318..52119f3b 100644
+--- a/darwin/tab.m
++++ b/darwin/tab.m
+@@ -26,6 +26,8 @@ - (void)setMargined:(int)m;
+ 	NSMutableArray *pages;
+ 	NSLayoutPriority horzHuggingPri;
+ 	NSLayoutPriority vertHuggingPri;
++	void (*onSelected)(uiTab *, void *);
++	void *onSelectedData;
+ };
+ 
+ @implementation tabPage
+@@ -84,11 +86,44 @@ - (void)setMargined:(int)m
+ 
+ @end
+ 
++@interface uiprivTabDelegate: NSObject<NSTabViewDelegate> {
++	uiTab *tab;
++}
++- (id)initWithTab:(uiTab *)t;
++- (void)tabView:(NSTabView *)tabView didSelectTabViewItem:(NSTabViewItem *)tabViewItem;
++@end
++
++@implementation uiprivTabDelegate
++
++- (id)initWithTab:(uiTab *)t
++{
++	self = [super init];
++	if (self)
++		self->tab = t;
++	return self;
++
++}
++
++- (void)tabView:(NSTabView *)tabView didSelectTabViewItem:(NSTabViewItem *)tabViewItem
++{
++	uiTab *t = self->tab;
++	(*(t->onSelected))(t, t->onSelectedData);
++}
++
++@end
++
++static void defaultOnSelected(uiTab *t, void*data)
++{
++	// do nothing
++}
++
+ static void uiTabDestroy(uiControl *c)
+ {
+ 	uiTab *t = uiTab(c);
+ 	tabPage *page;
++	uiprivTabDelegate *delegate;
+ 
++	uiTabOnSelected(t, defaultOnSelected, NULL);
+ 	// first remove all tab pages so we can destroy all the children
+ 	while ([t->tabview numberOfTabViewItems] != 0)
+ 		[t->tabview removeTabViewItem:[t->tabview tabViewItemAtIndex:0]];
+@@ -100,6 +135,9 @@ static void uiTabDestroy(uiControl *c)
+ 		uiControlDestroy(page.c);
+ 	}
+ 	// and finally destroy ourselves
++	delegate = [t->tabview delegate];
++	[t->tabview setDelegate:nil];
++	[delegate release];
+ 	[t->pages release];
+ 	[t->tabview release];
+ 	uiFreeControl(uiControl(t));
+@@ -272,13 +310,34 @@ void uiTabSetMargined(uiTab *t, int n, int margined)
+ 	[page setMargined:margined];
+ }
+ 
++
++int uiTabSelected(uiTab *t)
++{
++	NSTabViewItem *selectedTabViewItem = [t->tabview selectedTabViewItem];
++	return [t->tabview indexOfTabViewItem:selectedTabViewItem];
++}
++
++void uiTabSetSelected(uiTab *t, int index)
++{
++	[t->tabview selectTabViewItemAtIndex:index];
++}
++
++void uiTabOnSelected(uiTab *t, void (*f)(uiTab *, void *), void *data)
++{
++	t->onSelected = f;
++	t->onSelectedData = data;
++}
++
+ uiTab *uiNewTab(void)
+ {
+ 	uiTab *t;
++	uiprivTabDelegate *delegate;
+ 
+ 	uiDarwinNewControl(uiTab, t);
+ 
+ 	t->tabview = [[NSTabView alloc] initWithFrame:NSZeroRect];
++	delegate = [[uiprivTabDelegate alloc] initWithTab:t];
++	[t->tabview setDelegate:delegate];
+ 	// also good for NSTabView (same selector and everything)
+ 	uiDarwinSetControlFont((NSControl *) (t->tabview), NSRegularControlSize);
+ 
+@@ -288,5 +347,6 @@ void uiTabSetMargined(uiTab *t, int n, int margined)
+ 	t->horzHuggingPri = NSLayoutPriorityDefaultLow;
+ 	t->vertHuggingPri = NSLayoutPriorityDefaultLow;
+ 
++	uiTabOnSelected(t, defaultOnSelected, NULL);
+ 	return t;
+ }
+diff --git a/test/main.c b/test/main.c
+index 069e76d2..8be3148a 100644
+--- a/test/main.c
++++ b/test/main.c
+@@ -33,6 +33,11 @@ int onShouldQuit(void *data)
+ 	return 0;
+ }
+ 
++static void onTabSelected(uiTab *t , void* data) {
++	int index = uiTabSelected(t);
++	printf("Tab with index %d selected\n", index);
++}
++
+ uiBox *mainBox;
+ uiTab *mainTab;
+ 
+@@ -160,6 +165,8 @@ int main(int argc, char *argv[])
+ 	innerTab = newTab();
+ 	uiTabAppend(outerTab, "Pages 16-?", uiControl(innerTab));
+ 
++	uiTabOnSelected(outerTab, onTabSelected, NULL);
++
+ 	page16 = makePage16();
+ 	uiTabAppend(innerTab, "Page 16", uiControl(page16));
+ 
+diff --git a/test/page1.c b/test/page1.c
+index 2115ba26..92e31303 100644
+--- a/test/page1.c
++++ b/test/page1.c
+@@ -60,9 +60,14 @@ SHED(disable, Disable)
+ 
+ uiBox *page1;
+ 
++void goToPage2(uiButton *b, void *data)
++{
++	uiTabSetSelected(mainTab, 1);
++}
++
+ void makePage1(uiWindow *w)
+ {
+-	uiButton *getButton, *setButton;
++	uiButton *getButton, *setButton, *nextButton;
+ 	uiBox *hbox;
+ 	uiBox *testBox;
+ 	uiLabel *label;
+@@ -167,5 +172,8 @@ void makePage1(uiWindow *w)
+ 	uiBoxAppend(hbox, uiControl(getButton), 1);
+ 	uiBoxAppend(page1, uiControl(hbox), 0);
+ 
++	nextButton = uiNewButton("Go to Page 2");
++	uiButtonOnClicked(nextButton, goToPage2, NULL);
++	uiBoxAppend(page1, uiControl(nextButton), 0);
+ 	uiBoxAppend(page1, uiControl(label), 0);
+ }
+diff --git a/include/ui.h b/include/ui.h
+index cfb801e3..dfa9672b 100644
+--- a/include/ui.h
++++ b/include/ui.h
+@@ -915,6 +915,40 @@ _UI_EXTERN uiLabel *uiNewLabel(const char *text);
+ typedef struct uiTab uiTab;
+ #define uiTab(this) ((uiTab *) (this))
+ 
++/**
++ * Returns the index of the tab selected.
++ *
++ * @param c uiTab instance.
++ * @returns Index of the tab selected
++ * @memberof uiTab
++ */
++_UI_EXTERN int uiTabSelected(uiTab *t);
++
++/**
++ * Sets the tab selected.
++ *
++ * @param c uiTab instance.
++ * @param index Index of the tab to be selected
++ * @memberof uiTab
++ */
++_UI_EXTERN void uiTabSetSelected(uiTab *t, int index);
++
++/**
++ * Registers a callback for when a tab is selected.
++ *
++ * @param t uiTab instance.
++ * @param f Callback function.\n
++ *          @p sender Back reference to the instance that triggered the callback.\n
++ *          @p senderData User data registered with the sender instance.
++ * @param data User data to be passed to the callback.
++ *
++ * @note The callback is not triggered when calling uiTabSetSelected(),
++ * @note Only one callback can be registered at a time.
++ * @memberof uiTab
++ */
++_UI_EXTERN void uiTabOnSelected(uiTab *t,
++        void (*f)(uiTab *sender, void *senderData), void *data);
++
+ /**
+  * Appends a control in form of a page/tab with label.
+  *
+diff --git a/unix/tab.c b/unix/tab.c
+index b49c98b9..9d7af88f 100644
+--- a/unix/tab.c
++++ b/unix/tab.c
+@@ -8,17 +8,25 @@ struct uiTab {
+ 	GtkContainer *container;
+ 	GtkNotebook *notebook;
+ 
++	void (*onSelected)(uiTab *, void *);
++	void *onSelectedData;
+ 	GArray *pages;				// []*uiprivChild
+ };
+ 
+ uiUnixControlAllDefaultsExceptDestroy(uiTab)
+ 
++static void defaultOnSelected(uiTab *t, void *data)
++{
++	// do nothing
++}
++
+ static void uiTabDestroy(uiControl *c)
+ {
+ 	uiTab *t = uiTab(c);
+ 	guint i;
+ 	uiprivChild *page;
+ 
++	uiTabOnSelected(t, defaultOnSelected, NULL);
+ 	for (i = 0; i < t->pages->len; i++) {
+ 		page = g_array_index(t->pages, uiprivChild *, i);
+ 		uiprivChildDestroy(page);
+@@ -79,6 +87,28 @@ void uiTabSetMargined(uiTab *t, int n, int margined)
+ 	uiprivChildSetMargined(page, uiprivChildFlag(page));
+ }
+ 
++static void onSelected(GtkNotebook* notebook, GtkWidget *page, guint index, gpointer data)
++{
++	uiTab *t = uiTab(data);
++	(*(t->onSelected))(t, t->onSelectedData);
++}
++
++int uiTabSelected(uiTab *t)
++{
++	return gtk_notebook_get_current_page(t->notebook);
++}
++
++void uiTabSetSelected(uiTab *t, int index)
++{
++	gtk_notebook_set_current_page(t->notebook, index);
++}
++
++void uiTabOnSelected(uiTab *t, void (*f)(uiTab *, void *), void *data)
++{
++	t->onSelected = f;
++	t->onSelectedData = data;
++}
++
+ uiTab *uiNewTab(void)
+ {
+ 	uiTab *t;
+@@ -93,5 +123,8 @@ uiTab *uiNewTab(void)
+ 
+ 	t->pages = g_array_new(FALSE, TRUE, sizeof (uiprivChild *));
+ 
++	g_signal_connect_after(t->notebook, "switch-page", G_CALLBACK(onSelected), t);
++	uiTabOnSelected(t, defaultOnSelected, NULL);
++
+ 	return t;
+ }
+diff --git a/windows/tab.cpp b/windows/tab.cpp
+index ef621f1c..978471f4 100644
+--- a/windows/tab.cpp
++++ b/windows/tab.cpp
+@@ -10,6 +10,8 @@ struct uiTab {
+ 	HWND tabHWND;		// of the tab control itself
+ 	std::vector<struct tabPage *> *pages;
+ 	HWND parent;
++	void (*onSelected)(uiTab *, void *);
++	void *onSelectedData;
+ };
+ 
+ // utility functions
+@@ -69,6 +71,7 @@ static void showHidePage(uiTab *t, LRESULT which, int hide)
+ 		ShowWindow(page->hwnd, SW_SHOW);
+ 		// we only resize the current page, so we have to resize it; before we can do that, we need to make sure we are of the right size
+ 		uiWindowsControlMinimumSizeChanged(uiWindowsControl(t));
++		(*t->onSelected)(t, t->onSelectedData);
+ 	}
+ }
+ 
+@@ -87,11 +90,17 @@ static BOOL onWM_NOTIFY(uiControl *c, HWND hwnd, NMHDR *nm, LRESULT *lResult)
+ 	return TRUE;
+ }
+ 
++static void defaultOnSelected(uiTab *t, void *data)
++{
++	// do nothing
++}
++
+ static void uiTabDestroy(uiControl *c)
+ {
+ 	uiTab *t = uiTab(c);
+ 	uiControl *child;
+ 
++	uiTabOnSelected(t, defaultOnSelected, NULL);
+ 	for (struct tabPage *&page : *(t->pages)) {
+ 		child = page->child;
+ 		tabPageDestroy(page);
+@@ -269,6 +278,24 @@ static void onResize(uiWindowsControl *c)
+ 	tabRelayout(uiTab(c));
+ }
+ 
++void uiTabOnSelected(uiTab *t, void (*f)(uiTab *, void *), void *data)
++{
++	t->onSelected = f;
++	t->onSelectedData = data;
++}
++
++int uiTabSelected(uiTab *t)
++{
++	return curpage(t);
++}
++
++void uiTabSetSelected(uiTab *t, int index)
++{
++	showHidePage(t, curpage(t), 1);
++	SendMessageW(t->tabHWND, TCM_SETCURSEL, index, 0);
++	showHidePage(t, index, 0);
++}
++
+ uiTab *uiNewTab(void)
+ {
+ 	uiTab *t;
+@@ -287,6 +314,7 @@ uiTab *uiNewTab(void)
+ 	uiWindowsRegisterWM_NOTIFYHandler(t->tabHWND, onWM_NOTIFY, uiControl(t));
+ 
+ 	t->pages = new std::vector<struct tabPage *>;
++	uiTabOnSelected(t, defaultOnSelected, NULL);
+ 
+ 	return t;
+ }

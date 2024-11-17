@@ -7,11 +7,17 @@ This adds a bunch of experimental features and fixes:
 - [x] Windows DPI scaling (4k)
 - [ ] uiScroll (WIP)
 - [ ] uiImage as a widget
+- [x] `uiTabOnSelected`/`uiTabSetSelected` (289)
 - [x] Tooltips (266)
 - [x] Placeholders (224)
 - [x] Fix `uiWindowSetContentSize` ([261](https://github.com/libui-ng/libui-ng/pull/261))
 - [ ] uiImageButton
 - [ ] OpenGLArea (405)
+- [ ] Type safety with C11 generics
+
+Significant changes:
+- [x] Moved include files to include/
+- [ ] Change `uiImage` API
 
 # Build system
 Meson build system is preserved, but a make-based system is added for cross-compilation.
@@ -32,6 +38,10 @@ make TARGET=m libui.dylib
 - [ ] ARM64 Linux
 - [ ] ARM64 MacOS
 
-Merged PRs:
+# Credits:
+- https://github.com/libui-ng/libui-ng
+- https://github.com/andlabs/libui
+### Merged PRs:
 - https://github.com/libui-ng/libui-ng/pull/266 / https://github.com/libui-ng/libui-ng/pull/256
 - https://github.com/libui-ng/libui-ng/pull/224
+- https://github.com/libui-ng/libui-ng/pull/289

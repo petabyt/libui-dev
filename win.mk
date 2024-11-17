@@ -24,7 +24,7 @@ libui_win64.dll: $(O_FILES)
 install: libui_win64.a libui_win64.dll
 	cp libui_win64.a /usr/x86_64-w64-mingw32/lib/libui.a
 	cp libui_win64.dll /usr/x86_64-w64-mingw32/lib/libui_win64.dll
-	cp ui.h /usr/x86_64-w64-mingw32/include/
+	cp include/ui.h /usr/x86_64-w64-mingw32/include/
 
 build: libui_win64.a
 	-mkdir build
