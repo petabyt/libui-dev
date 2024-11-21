@@ -13,7 +13,10 @@ This adds a bunch of experimental features and fixes:
 - [x] Fix `uiWindowSetContentSize` ([261](https://github.com/libui-ng/libui-ng/pull/261))
 - [ ] uiImageButton
 - [ ] OpenGLArea (405)
-- [ ] Type safety with C11 generics
+- [ ] Type safety with C11 generics (https://github.com/petabyt/libui-dev/issues/1)
+- [ ] Expose more system functions to make adding controls easier
+- [ ] `uiScintilla`
+- [ ] Get Qt5 backend working (https://github.com/mischnic/libui/tree/qt5)
 
 Significant changes:
 - [x] Moved include files to include/
