@@ -1,18 +1,33 @@
+all:
+	make TARGET=w libui_win64.a -j`nproc`
+	make TARGET=l libui.so -j`nproc`
+	darling shell TARGET=m libui.dylib -j`nproc`
+
+include cross.mk
+
 LIBUI_COMMON := $(patsubst %.c,%.o,$(wildcard common/*.c))
 LIBUI_COMMON := $(filter-out %OLD_table.o,$(LIBUI_COMMON))
 
-CFLAGS := -I. -Iinclude/ -g
-
-all:
-	echo "see Makefile"
-
-ide/demo.h: ide/test.lua
-	cd ide && xxd -i test.lua > demo.h
-ide/test.c: ide/demo.h
+CFLAGS := -I. -Iinclude/ -g -Isubprojects/cmocka-1.1.5/include
 
 ifeq ($(TARGET),w) # ++++++++++++++++++++++++++
 LIBUI_COMMON += extras/favicon/win.o extras/scroll.o extras/win_init.o
-include win.mk
+
+LIBUI_WIN := $(patsubst %.cpp,%.o,$(wildcard windows/*.cpp))
+LIBUI_WIN := $(filter-out OLD_,$(LIBUI_WIN))
+
+O_FILES := $(LIBUI_COMMON) $(LIBUI_WIN)
+O_FILES := $(O_FILES:.o=.$(TARGET).o)
+
+# Yes, lots of libs required
+LIBS := -luser32 -lkernel32 -lgdi32 -lcomctl32 -luxtheme -lmsimg32 -lcomdlg32 -ld2d1 -ldwrite -lole32 -loleaut32 -loleacc
+LIBS += -lstdc++ -lgcc -lpthread -lssp -lurlmon -luuid
+
+CFLAGS += -Iwindows -fvisibility=hidden -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -Wnon-virtual-dtor -Wextra -Wpedantic -std=c++11 -Wno-unused-parameter -Wno-switch -D_UI_STATIC -Dlibui_EXPORTS
+
+libui_win64.a: $(O_FILES)
+	x86_64-w64-mingw32-ar rsc libui_win64.a $(O_FILES)
+
 endif # ------------------------------
 
 ifeq ($(TARGET),l) # ++++++++++++++++++++++++++
@@ -48,7 +63,7 @@ endif # ------------------------------------
 ifeq ($(TARGET),m) # ++++++++++++++++++++++++++
 LIBUI_COMMON += extras/favicon/darwin.o
 
-LIBUI_DARWIN := $(patsubst %.m,%.o,$(wildcard $(LIBUI)/darwin/*.m))
+LIBUI_DARWIN := $(patsubst %.m,%.o,$(wildcard darwin/*.m))
 LIBUI_DARWIN := $(filter-out %OLD_table.o,$(LIBUI_DARWIN))
 
 O_FILES := $(LIBUI_COMMON) $(LIBUI_DARWIN)
@@ -59,31 +74,12 @@ LDFLAGS := -framework Foundation -framework Appkit -framework CoreText -framewor
 libui.dylib: $(O_FILES)
 	$(CC) -shared $(O_FILES) $(LDFLAGS) -o libui.dylib
 
-define COMPILE
-$(2).out: $(1) libui.dylib
-	$(CC) $(CFLAGS) $(1) -L. -lui -o $(2).out
-endef
-
 install: libui.dylib
 	cp libui.dylib /usr/local/lib
 	cp ui.h /usr/local/include
 
 endif # ---------------------
 
-%.$(TARGET).o: %.m
-	$(CC) -c $< $(CFLAGS) -o $@
-
-%.$(TARGET).o: %.c
-	$(CC) -c $< $(CFLAGS) -o $@
-
-%.$(TARGET).o: %.cpp
-	$(CPP) -c $< $(CFLAGS) -o $@
-
 clean:
-	make TARGET=l clean_
-	make TARGET=w clean_
-	make TARGET=m clean_
-
-clean_:
-	$(RM) $(O_FILES) *.o *.exe *.out *.res *.so *.a build *.dylib example/*.out ide/*.o *.res *.dll
-	$(RM) `find windows unix darwin test examples -regex ".*\.\(o\|d\)"`
+	$(RM) *.o *.exe *.out *.so *.a build *.dylib example/*.out ide/*.o *.dll
+	$(RM) `find windows unix darwin test examples -regex ".*\.\(o\|d\|res\)"`
