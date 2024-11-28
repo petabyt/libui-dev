@@ -1,0 +1,432 @@
+diff --git a/common/controlsigs.h b/common/controlsigs.h
+index 03e675ccc..8f0040421 100644
+--- a/common/controlsigs.h
++++ b/common/controlsigs.h
+@@ -13,6 +13,7 @@
+ #define uiFormSignature 0x466F726D
+ #define uiGridSignature 0x47726964
+ #define uiGroupSignature 0x47727062
++#define uiImageSignature 0x4723BDC6
+ #define uiLabelSignature 0x4C61626C
+ #define uiMultilineEntrySignature 0x4D6C6E45
+ #define uiProgressBarSignature 0x50426172
+diff --git a/darwin/CMakeLists.txt b/darwin/CMakeLists.txt
+index e7fe45077..4d0b20757 100644
+--- a/darwin/CMakeLists.txt
++++ b/darwin/CMakeLists.txt
+@@ -21,6 +21,7 @@ list(APPEND _LIBUI_SOURCES
+ 	darwin/form.m
+ 	darwin/grid.m
+ 	darwin/group.m
++	darwin/image.m
+ 	darwin/label.m
+ 	darwin/main.m
+ 	darwin/map.m
+diff --git a/darwin/image.m b/darwin/image.m
+new file mode 100644
+index 000000000..434652b12
+--- /dev/null
++++ b/darwin/image.m
+@@ -0,0 +1,37 @@
++// 14 september 2016
++#import "uipriv_darwin.h"
++
++struct uiImage {
++	uiDarwinControl c;
++	NSImage *image;
++	NSImageView *imageView;
++};
++
++uiDarwinControlAllDefaults(uiImage, imageView)
++
++void uiImageSetSize(uiImage *i, unsigned int width, unsigned int height)
++{
++	i->image.size = NSMakeSize(width, height);
++	[i->imageView setNeedsDisplay:YES];
++}
++
++void uiImageGetSize(uiImage *i, unsigned int *width, unsigned int *height)
++{
++	NSSize size = i->image.size;
++	*width = size.width;
++	*height = size.height;
++}
++
++uiImage *uiNewImage(const char *filename)
++{
++	uiImage *i;
++
++	uiDarwinNewControl(uiImage, i);
++
++	i->image = [[NSImage alloc] initWithContentsOfFile:[NSString stringWithUTF8String:filename]];
++
++	i->imageView = [[NSImageView alloc] init];
++	[i->imageView setImage:i->image];
++
++	return i;
++}
+diff --git a/ui.h b/ui.h
+index 70c2f121f..5f21c0be0 100644
+--- a/ui.h
++++ b/ui.h
+@@ -153,6 +153,12 @@ _UI_EXTERN uiEntry *uiNewEntry(void);
+ _UI_EXTERN uiEntry *uiNewPasswordEntry(void);
+ _UI_EXTERN uiEntry *uiNewSearchEntry(void);
+ 
++typedef struct uiImage uiImage;
++#define uiImage(this) ((uiImage *) (this))
++_UI_EXTERN void uiImageSetSize(uiImage *i, unsigned int width, unsigned int height);
++_UI_EXTERN void uiImageGetSize(uiImage *i, unsigned int *width, unsigned int *height);
++_UI_EXTERN uiImage *uiNewImage(const char *filename);
++
+ typedef struct uiLabel uiLabel;
+ #define uiLabel(this) ((uiLabel *) (this))
+ _UI_EXTERN char *uiLabelText(uiLabel *l);
+diff --git a/unix/CMakeLists.txt b/unix/CMakeLists.txt
+index 56d653ad3..4e713aa22 100644
+--- a/unix/CMakeLists.txt
++++ b/unix/CMakeLists.txt
+@@ -26,6 +26,7 @@ list(APPEND _LIBUI_SOURCES
+ 	unix/graphemes.c
+ 	unix/grid.c
+ 	unix/group.c
++	unix/image.c
+ 	unix/label.c
+ 	unix/main.c
+ 	unix/menu.c
+diff --git a/unix/image.c b/unix/image.c
+new file mode 100644
+index 000000000..efdbb38de
+--- /dev/null
++++ b/unix/image.c
+@@ -0,0 +1,42 @@
++// 13 september 2016
++#include "uipriv_unix.h"
++
++struct uiImage {
++	uiUnixControl c;
++	GtkWidget *widget;
++};
++
++uiUnixControlAllDefaults(uiImage)
++
++void uiImageSetSize(uiImage *i, unsigned int width, unsigned int height)
++{
++	GdkPixbuf *pixbuf;
++
++	pixbuf = gtk_image_get_pixbuf(GTK_IMAGE(i->widget));
++	pixbuf = gdk_pixbuf_scale_simple(pixbuf,
++		width,
++		height,
++		GDK_INTERP_BILINEAR);
++	gtk_image_set_from_pixbuf(GTK_IMAGE(i->widget), pixbuf);
++	g_object_unref(pixbuf);
++}
++
++void uiImageGetSize(uiImage *i, unsigned int *width, unsigned int *height)
++{
++	GdkPixbuf *pixbuf;
++
++	pixbuf = gtk_image_get_pixbuf(GTK_IMAGE(i->widget));
++	*width = gdk_pixbuf_get_width(pixbuf);
++	*height = gdk_pixbuf_get_height(pixbuf);
++}
++
++uiImage *uiNewImage(const char *filename)
++{
++	uiImage *img;
++
++	uiUnixNewControl(uiImage, img);
++
++	img->widget = gtk_image_new_from_file(filename);
++
++	return img;
++}
+diff --git a/windows/CMakeLists.txt b/windows/CMakeLists.txt
+index 0f1d61def..0a3c62be9 100644
+--- a/windows/CMakeLists.txt
++++ b/windows/CMakeLists.txt
+@@ -32,6 +32,7 @@ list(APPEND _LIBUI_SOURCES
+ 	windows/graphemes.cpp
+ 	windows/grid.cpp
+ 	windows/group.cpp
++	windows/image.cpp
+ 	windows/init.cpp
+ 	windows/label.cpp
+ 	windows/main.cpp
+@@ -80,7 +81,7 @@ endmacro()
+ # notice that usp10 comes before gdi32
+ # TODO prune this list
+ set(_LIBUI_LIBS
+-	user32 kernel32 usp10 gdi32 comctl32 uxtheme msimg32 comdlg32 d2d1 dwrite ole32 oleaut32 oleacc uuid
++	user32 kernel32 usp10 gdi32 comctl32 uxtheme msimg32 comdlg32 d2d1 dwrite ole32 oleaut32 oleacc uuid windowscodecs
+ PARENT_SCOPE)
+ 
+ if(NOT MSVC)
+diff --git a/windows/image.cpp b/windows/image.cpp
+new file mode 100644
+index 000000000..9e60913a8
+--- /dev/null
++++ b/windows/image.cpp
+@@ -0,0 +1,219 @@
++// 13 september 2016
++#include "uipriv_windows.hpp"
++
++struct uiImage {
++	uiWindowsControl c;
++	HWND hwnd;
++	WCHAR *wfilename;
++	HBITMAP bmpSource;
++	HDC hdcSource;
++	LONG width;
++	LONG height;
++	LONG displayWidth;
++	LONG displayHeight;
++	BOOL originalSize;
++};
++
++static HBITMAP ConvertToHBitmap(IWICBitmapSource * ipBitmap)
++{
++	HBITMAP hbmp = NULL;
++	void * pvImageBits = NULL;
++	HDC hdcScreen = GetDC(NULL);
++
++	UINT width = 0;
++	UINT height = 0;
++	if (FAILED(ipBitmap->GetSize(&width, &height)) || width == 0 || height == 0) {
++		return NULL;
++	}
++
++	BITMAPINFO bminfo = {0};
++	bminfo.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
++	bminfo.bmiHeader.biWidth = width;
++	bminfo.bmiHeader.biHeight = -((LONG) height);
++	bminfo.bmiHeader.biPlanes = 1;
++	bminfo.bmiHeader.biBitCount = 32;
++	bminfo.bmiHeader.biCompression = BI_RGB;
++
++	hbmp = CreateDIBSection(hdcScreen, &bminfo, DIB_RGB_COLORS, &pvImageBits, NULL, 0);
++	ReleaseDC(NULL, hdcScreen);
++	if (hbmp == NULL) {
++		return NULL;
++	}
++
++	UINT stride = width * 4;
++	if (FAILED(ipBitmap->CopyPixels(NULL, stride, stride * height, static_cast<BYTE *>(pvImageBits)))) {
++		DeleteObject(hbmp);
++		hbmp = NULL;
++	}
++
++	return hbmp;
++}
++
++static HBITMAP LoadImageFromFile(const WCHAR *filename)
++{
++	IWICImagingFactory *wicFactory = NULL;
++	IWICBitmapDecoder *decoder = NULL;
++	IWICBitmapFrameDecode *frame = NULL;
++	IWICBitmapSource *bitmap = NULL;
++	HRESULT hr;
++
++	hr = CoCreateInstance(
++		CLSID_WICImagingFactory,
++		NULL,
++		CLSCTX_INPROC_SERVER,
++		IID_PPV_ARGS(&wicFactory)
++	);
++
++	if (FAILED(hr)) {
++		return NULL;
++	}
++
++	hr = wicFactory->CreateDecoderFromFilename(
++		filename,
++		NULL,
++		GENERIC_READ,
++		WICDecodeMetadataCacheOnDemand,
++		&decoder
++	);
++
++	if (SUCCEEDED(hr)) {
++		hr = decoder->GetFrame(0, &frame);
++	}
++
++	WICConvertBitmapSource(GUID_WICPixelFormat32bppPBGRA, frame, &bitmap);
++	frame->Release();
++	decoder->Release();
++
++	return ConvertToHBitmap(bitmap);
++}
++
++static LRESULT CALLBACK imageWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
++{
++	uiImage *i;
++	CREATESTRUCTW *cs = (CREATESTRUCTW *) lParam;
++	PAINTSTRUCT ps;
++	HDC hdcDestination;
++	BITMAP bm = {0};
++
++	i = (uiImage *) GetWindowLongPtrW(hwnd, GWLP_USERDATA);
++	if (i == NULL) {
++		if (uMsg == WM_CREATE) {
++			i = (uiImage *) (cs->lpCreateParams);
++			// assign i->hwnd here so we can use it immediately
++			i->hwnd = hwnd;
++			SetWindowLongPtrW(hwnd, GWLP_USERDATA, (LONG_PTR) i);
++
++			// Load the image through the windows imaging component
++			i->bmpSource = LoadImageFromFile(i->wfilename);
++
++			if(i->bmpSource == NULL) {
++				logLastError(L"Failed to load the image");
++			}
++			GetObject(i->bmpSource, sizeof(bm), &bm);
++			i->width = bm.bmWidth;
++			i->height = bm.bmHeight;
++			i->displayWidth = i->width;
++			i->displayHeight = i->height;
++			i->hdcSource = CreateCompatibleDC(GetDC(0));
++			SelectObject(i->hdcSource, i->bmpSource);
++			return 0;
++		}
++		// fall through to DefWindowProcW() anyway
++		return DefWindowProcW(hwnd, uMsg, wParam, lParam);
++	}
++
++	if (uMsg == WM_PAINT) {
++		hdcDestination = BeginPaint(hwnd, &ps);
++		if (i->originalSize) {
++			BitBlt(hdcDestination, 0, 0, i->width, i->height, i->hdcSource, 0, 0, SRCCOPY);
++		} else {
++			SetStretchBltMode(hdcDestination,HALFTONE);
++			StretchBlt(hdcDestination,
++				0, 0,
++				i->displayWidth, i->displayHeight,
++				i->hdcSource,
++				0, 0,
++				i->width, i->height,
++				SRCCOPY);
++		}
++		EndPaint(hwnd, &ps);
++		return 0;
++	}
++
++	// nothing done
++	return DefWindowProc(hwnd, uMsg, wParam, lParam);
++}
++
++static void uiImageDestroy(uiControl *c)
++{
++	uiImage *i = uiImage(c);
++
++	uiFree(i->wfilename);
++	uiWindowsEnsureDestroyWindow(i->hwnd);
++	uiFreeControl(uiControl(i));
++}
++
++uiWindowsControlAllDefaultsExceptDestroy(uiImage)
++
++static void uiImageMinimumSize(uiWindowsControl *c, int *width, int *height)
++{
++	uiImage *i = uiImage(c);
++	*width = i->displayWidth;
++	*height = i->displayHeight;
++}
++
++void uiImageSetSize(uiImage *i, unsigned int width, unsigned int height)
++{
++	i->displayWidth = width;
++	i->displayHeight = height;
++	i->originalSize = width == i->width && height == i->height;
++
++	invalidateRect(i->hwnd, NULL, FALSE);
++
++	// If the image is smaller in either direction the part of the window that
++	// used to be covered by the image will not get redrawn because it is no
++	// longer part of the image. To fix this just redraw the entire parent
++	// window. This feels wrong though.
++	invalidateRect(GetParent(i->hwnd), NULL, FALSE);
++}
++
++void uiImageGetSize(uiImage *i, unsigned int *width, unsigned int *height)
++{
++	*width = i->displayWidth;
++	*height = i->displayHeight;
++}
++
++void unregisterImage(void)
++{
++	if (UnregisterClassW(imageClass, hInstance) == 0)
++		logLastError(L"error unregistering uiImage window class");
++}
++
++ATOM registerImageClass(HICON hDefaultIcon, HCURSOR hDefaultCursor)
++{
++	WNDCLASSW wc;
++
++	ZeroMemory(&wc, sizeof (WNDCLASSW));
++	wc.lpszClassName = imageClass;
++	wc.lpfnWndProc = imageWndProc;
++	wc.hInstance = hInstance;
++	wc.hIcon = hDefaultIcon;
++	wc.hCursor = hDefaultCursor;
++	return RegisterClassW(&wc);
++}
++
++uiImage *uiNewImage(const char *filename)
++{
++	uiImage *image;
++
++	uiWindowsNewControl(uiImage, image);
++	image->wfilename = toUTF16(filename);
++
++	uiWindowsEnsureCreateControlHWND(0,
++		imageClass, L"",
++		0,
++		hInstance, image,
++		FALSE);
++
++	return image;
++}
+diff --git a/windows/init.cpp b/windows/init.cpp
+index c91929f9c..9edbd332c 100644
+--- a/windows/init.cpp
++++ b/windows/init.cpp
+@@ -124,6 +124,9 @@ const char *uiInit(uiInitOptions *o)
+ 	if (registerAreaClass(hDefaultIcon, hDefaultCursor) == 0)
+ 		return ieLastErr("registering uiArea window class");
+ 
++	if (registerImageClass(hDefaultIcon, hDefaultCursor) == 0)
++		return ieLastErr("registering uiImage window class");
++
+ 	if (registerMessageFilter() == 0)
+ 		return ieLastErr("registering libui message filter");
+ 
+diff --git a/windows/uipriv_windows.hpp b/windows/uipriv_windows.hpp
+index 6ffe09f1a..a0b2adb3f 100644
+--- a/windows/uipriv_windows.hpp
++++ b/windows/uipriv_windows.hpp
+@@ -111,6 +111,11 @@ extern HWND newD2DScratch(HWND parent, RECT *rect, HMENU controlID, SUBCLASSPROC
+ extern ATOM registerAreaClass(HICON, HCURSOR);
+ extern void unregisterArea(void);
+ 
++// image.cpp
++#define imageClass L"libui_uiImageClass"
++extern ATOM registerImageClass(HICON, HCURSOR);
++extern void unregisterImage(void);
++
+ // areaevents.cpp
+ extern BOOL areaFilter(MSG *);
+ 
+diff --git a/windows/winapi.hpp b/windows/winapi.hpp
+index 86aba5d7e..8133d3046 100644
+--- a/windows/winapi.hpp
++++ b/windows/winapi.hpp
+@@ -35,6 +35,7 @@
+ #include <d2d1helper.h>
+ #include <dwrite.h>
+ #include <usp10.h>
++#include <wincodec.h>
+ 
+ #include <stdint.h>
+ #include <string.h>

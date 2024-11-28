@@ -1,0 +1,253 @@
+diff --git a/ui.h b/ui.h
+index b5fb9a271..a4a5737f3 100644
+--- a/ui.h
++++ b/ui.h
+@@ -366,6 +366,8 @@ typedef struct uiDrawMatrix uiDrawMatrix;
+ 
+ typedef struct uiDrawBrushGradientStop uiDrawBrushGradientStop;
+ 
++typedef struct uiDrawBitmap uiDrawBitmap;
++
+ _UI_ENUM(uiDrawBrushType) {
+ 	uiDrawBrushTypeSolid,
+ 	uiDrawBrushTypeLinearGradient,
+@@ -453,6 +455,15 @@ struct uiDrawStrokeParams {
+ 	double DashPhase;
+ };
+ 
++struct uiRect {
++	int X;
++	int Y;
++	int Width;
++	int Height;
++};
++
++typedef struct uiRect uiRect;
++
+ _UI_EXTERN uiDrawPath *uiDrawNewPath(uiDrawFillMode fillMode);
+ _UI_EXTERN void uiDrawFreePath(uiDrawPath *p);
+ 
+@@ -499,6 +510,12 @@ _UI_EXTERN void uiDrawClip(uiDrawContext *c, uiDrawPath *path);
+ _UI_EXTERN void uiDrawSave(uiDrawContext *c);
+ _UI_EXTERN void uiDrawRestore(uiDrawContext *c);
+ 
++// bitmap API
++_UI_EXTERN uiDrawBitmap* uiDrawNewBitmap(uiDrawContext* c, int width, int height);
++_UI_EXTERN void uiDrawBitmapUpdate(uiDrawBitmap* bmp, const void* data);
++_UI_EXTERN void uiDrawBitmapDraw(uiDrawContext* c, uiDrawBitmap* bmp, uiRect* srcrect, uiRect* dstrect, int filter);
++_UI_EXTERN void uiDrawFreeBitmap(uiDrawBitmap* bmp);
++
+ // uiAttribute stores information about an attribute in a
+ // uiAttributedString.
+ //
+diff --git a/unix/draw.c b/unix/draw.c
+index a8f26d7f7..8df798bc9 100644
+--- a/unix/draw.c
++++ b/unix/draw.c
+@@ -141,3 +141,69 @@ void uiDrawRestore(uiDrawContext *c)
+ {
+ 	cairo_restore(c->cr);
+ }
++
++// bitmap API
++
++uiDrawBitmap* uiDrawNewBitmap(uiDrawContext* c, int width, int height)
++{
++	uiDrawBitmap* bmp;
++
++	bmp = uiprivNew(uiDrawBitmap);
++
++	bmp->bmp = cairo_image_surface_create(CAIRO_FORMAT_RGB24, width, height);
++	if (cairo_surface_status(bmp->bmp) != CAIRO_STATUS_SUCCESS)
++		uiprivImplBug("error creating bitmap: %s",
++			cairo_status_to_string(cairo_surface_status(bmp->bmp)));
++
++	bmp->Width = width;
++	bmp->Height = height;
++	bmp->Stride = cairo_image_surface_get_stride(bmp->bmp);
++
++	return bmp;
++}
++
++void uiDrawBitmapUpdate(uiDrawBitmap* bmp, const void* data)
++{
++	unsigned char* src = data;
++	unsigned char* dst = cairo_image_surface_get_data(bmp->bmp);
++	int y;
++
++	if (bmp->Stride == bmp->Width * 4) {
++		// stride 'good', can just directly copy
++		memcpy(dst, src, bmp->Stride*bmp->Height);
++	} else {
++		for (y = 0; y < bmp->Height; y++) {
++			memcpy(dst, src, bmp->Width * 4);
++			src += bmp->Width * 4;
++			dst += bmp->Stride;
++		}
++	}
++
++	cairo_surface_mark_dirty(bmp->bmp);
++}
++
++void uiDrawBitmapDraw(uiDrawContext* c, uiDrawBitmap* bmp, uiRect* srcrect, uiRect* dstrect, int filter)
++{
++	cairo_save(c->cr);
++	cairo_rectangle(c->cr, dstrect->X, dstrect->Y, dstrect->Width, dstrect->Height);
++
++	cairo_translate(c->cr, dstrect->X, dstrect->Y);
++	if ((dstrect->Width != srcrect->Width) || (dstrect->Height != srcrect->Height))	{
++		double sx = dstrect->Width / (double)srcrect->Width;
++		double sy = dstrect->Height / (double)srcrect->Height;
++		cairo_scale(c->cr, sx, sy);
++	}
++
++	cairo_set_source_surface(c->cr, bmp->bmp, -srcrect->X, -srcrect->Y);
++	cairo_pattern_set_filter(cairo_get_source(c->cr), filter ? CAIRO_FILTER_BILINEAR : CAIRO_FILTER_NEAREST);
++	cairo_clip(c->cr);
++	cairo_paint(c->cr);
++
++	cairo_restore(c->cr);
++}
++
++void uiDrawFreeBitmap(uiDrawBitmap* bmp)
++{
++	cairo_surface_destroy(bmp->bmp);
++	uiprivFree(bmp);
++}
+diff --git a/unix/draw.h b/unix/draw.h
+index d46d074f6..cd7ce4a19 100644
+--- a/unix/draw.h
++++ b/unix/draw.h
+@@ -6,6 +6,14 @@ struct uiDrawContext {
+ 	GtkStyleContext *style;
+ };
+ 
++struct uiDrawBitmap {
++	int Width;
++	int Height;
++	int Stride;
++
++	cairo_surface_t* bmp;
++};
++
+ // drawpath.c
+ extern void uiprivRunPath(uiDrawPath *p, cairo_t *cr);
+ extern uiDrawFillMode uiprivPathFillMode(uiDrawPath *path);
+diff --git a/unix/window.c b/unix/window.c
+index c5ba20384..aaeaa8ef4 100644
+--- a/unix/window.c
++++ b/unix/window.c
+@@ -260,6 +260,7 @@ uiWindow *uiNewWindow(const char *title, int width, int height, int hasMenubar)
+ 	gtk_widget_set_halign(w->childHolderWidget, GTK_ALIGN_FILL);
+ 	gtk_widget_set_vexpand(w->childHolderWidget, TRUE);
+ 	gtk_widget_set_valign(w->childHolderWidget, GTK_ALIGN_FILL);
++	gtk_box_set_homogeneous(GTK_BOX(w->childHolderWidget), TRUE);
+ 	gtk_container_add(w->vboxContainer, w->childHolderWidget);
+ 
+ 	// show everything in the vbox, but not the GtkWindow itself
+diff --git a/windows/draw.cpp b/windows/draw.cpp
+index a5e5033a5..95d8abf16 100644
+--- a/windows/draw.cpp
++++ b/windows/draw.cpp
+@@ -38,7 +38,7 @@ ID2D1HwndRenderTarget *makeHWNDRenderTarget(HWND hwnd)
+ 		logLastError(L"error getting DC to find DPI");
+ 
+ 	ZeroMemory(&props, sizeof (D2D1_RENDER_TARGET_PROPERTIES));
+-	props.type = D2D1_RENDER_TARGET_TYPE_DEFAULT;
++	props.type = D2D1_RENDER_TARGET_TYPE_HARDWARE;
+ 	props.pixelFormat.format = DXGI_FORMAT_UNKNOWN;
+ 	props.pixelFormat.alphaMode = D2D1_ALPHA_MODE_UNKNOWN;
+ 	props.dpiX = GetDeviceCaps(dc, LOGPIXELSX);
+@@ -62,8 +62,16 @@ ID2D1HwndRenderTarget *makeHWNDRenderTarget(HWND hwnd)
+ 		&props,
+ 		&hprops,
+ 		&rt);
+-	if (hr != S_OK)
+-		logHRESULT(L"error creating HWND render target", hr);
++	if (hr != S_OK) {
++		props.type = D2D1_RENDER_TARGET_TYPE_DEFAULT;
++		hr = d2dfactory->CreateHwndRenderTarget(
++			&props,
++			&hprops,
++			&rt);
++		if (hr != S_OK)
++			logHRESULT(L"error creating HWND render target", hr);
++	}
++
+ 	return rt;
+ }
+ 
+@@ -509,3 +517,54 @@ void uiDrawRestore(uiDrawContext *c)
+ 	// no need to explicitly addref or release; just transfer the ref
+ 	c->currentClip = state.clip;
+ }
++
++
++// bitmap API
++
++uiDrawBitmap* uiDrawNewBitmap(uiDrawContext* c, int width, int height)
++{
++	uiDrawBitmap* bmp;
++	HRESULT hr;
++
++	bmp = uiprivNew(uiDrawBitmap);
++
++	D2D1_BITMAP_PROPERTIES bp2 = D2D1::BitmapProperties();
++	bp2.dpiX = 0;
++	bp2.dpiY = 0;
++	bp2.pixelFormat = D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE);
++
++	//c->rt->BeginDraw();
++
++	hr = c->rt->CreateBitmap(D2D1::SizeU(width,height), NULL, 0, &bp2, &bmp->bmp);
++	if (hr != S_OK)
++		logHRESULT(L"error creating bitmap", hr);
++
++	//c->rt->EndDraw();
++
++	bmp->Width = width;
++	bmp->Height = height;
++	bmp->Stride = width*4;
++
++	return bmp;
++}
++
++void uiDrawBitmapUpdate(uiDrawBitmap* bmp, const void* data)
++{
++	D2D1_RECT_U rekt = D2D1::RectU(0, 0, bmp->Width, bmp->Height);
++	bmp->bmp->CopyFromMemory(&rekt, data, bmp->Stride);
++}
++
++void uiDrawBitmapDraw(uiDrawContext* c, uiDrawBitmap* bmp, uiRect* srcrect, uiRect* dstrect, int filter)
++{
++	D2D_RECT_F _srcrect = D2D1::RectF(srcrect->X, srcrect->Y, srcrect->X+srcrect->Width, srcrect->Y+srcrect->Height);
++	D2D_RECT_F _dstrect = D2D1::RectF(dstrect->X, dstrect->Y, dstrect->X+dstrect->Width, dstrect->Y+dstrect->Height);
++
++	c->rt->DrawBitmap(bmp->bmp, &_dstrect, 1.0f,
++		filter ? D2D1_BITMAP_INTERPOLATION_MODE_LINEAR : D2D1_BITMAP_INTERPOLATION_MODE_NEAREST_NEIGHBOR, &_srcrect);
++}
++
++void uiDrawFreeBitmap(uiDrawBitmap* bmp)
++{
++	bmp->bmp->Release();
++	uiprivFree(bmp);
++}
+diff --git a/windows/draw.hpp b/windows/draw.hpp
+index c271e4db8..b4bbc6c00 100644
+--- a/windows/draw.hpp
++++ b/windows/draw.hpp
+@@ -11,6 +11,14 @@ struct uiDrawContext {
+ 	ID2D1PathGeometry *currentClip;
+ };
+ 
++struct uiDrawBitmap {
++	int Width;
++	int Height;
++	int Stride;
++
++	ID2D1Bitmap* bmp;
++};
++
+ // drawpath.cpp
+ extern ID2D1PathGeometry *pathGeometry(uiDrawPath *p);
+ 
