@@ -45,11 +45,15 @@ define convert_target
 $(patsubst %.o,%.$(TARGET).o,$1)
 endef
 
+define convert_target_to
+$(patsubst %.o,%.$2.o,$1)
+endef
+
 %.$(TARGET).o: %.c
 	$(CC) -MMD -c $< $(CFLAGS) -o $@
 
 %.$(TARGET).o: %.cpp
-	$(CC) -MMD -c $< $(CFLAGS) -o $@
+	$(CC) -MMD -c $< $(CFLAGS) $(CXXFLAGS) -o $@
 
 %.$(TARGET).o: %.S
 	$(CC) -c $< $(CFLAGS) -o $@

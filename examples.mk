@@ -1,12 +1,17 @@
-ide/demo.h: ide/test.lua
-	cd ide && xxd -i test.lua > demo.h
-ide/test.c: ide/demo.h
+#ide/demo.h: ide/test.lua
+#	cd ide && xxd -i test.lua > demo.h
+#ide/test.c: ide/demo.h
 
-TESTER_FILES := $(addprefix test/,drawtests.w.o images.w.o main.w.o menus.w.o page1.w.o page2.w.o page3.w.o page4.w.o page5.w.o page6.w.o page7.w.o page7a.w.o page7b.w.o page7c.w.o page11.w.o page12.w.o page13.w.o page14.w.o page15.w.o page16.w.o page17.w.o spaced.w.o)
+TESTER_FILES := $(addprefix test/,drawtests.o images.o main.o menus.o page1.o page2.o page3.o page4.o page5.o page6.o page7.o page7a.o page7b.o page7c.o page11.o page12.o page13.o page14.o page15.o page16.o page17.o spaced.o)
 
-tester.exe: $(TESTER_FILES) test/resources.res libui_win64.a
-	$(CC) -static $(TESTER_FILES) libui_win64.a test/resources.res $(LIBS) -o tester.exe
+TESTER_FILES_WIN := $(call convert_target_to,$(TESTER_FILES),w)
+tester.exe: $(TESTER_FILES_WIN) test/resources.res libui_win64.a
+	$(CC) -static $(TESTER_FILES_WIN) libui_x86_64_win.a test/resources.res $(LIBS) -o tester.exe
 
-UNIT_FILES := $(patsubst %.c,%.$(TARGET).o,$(wildcard test/unit/*.c)) subprojects/cmocka-1.1.5/src/cmocka.w.o
-unit.exe: $(UNIT_FILES) test/unit/resources.res libui_win64.a
-	$(CC) -static $(UNIT_FILES) libui_win64.a test/unit/resources.res $(LIBS) -o unit.exe
+TESTER_FILES_UNIX := $(call convert_target_to,$(TESTER_FILES),l)
+tester.out: $(TESTER_FILES_UNIX)
+	$(CC) $(TESTER_FILES_UNIX) -lui -o tester.out
+
+UNIT_FILES := $(patsubst %.c,%.$(TARGET).o,$(wildcard test/unit/*.c)) subprojects/cmocka-1.1.5/src/cmocka.o
+unit.exe: $(UNIT_FILES) test/unit/resources.res libui_x86_64_win.a
+	$(CC) -static $(UNIT_FILES) libui_x86_64_win.a test/unit/resources.res $(LIBS) -o unit.exe
