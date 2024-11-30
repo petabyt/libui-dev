@@ -32,6 +32,9 @@ WIN_LINK_ESSENTIALS += -luser32 -lkernel32 -lgdi32 -lcomctl32 -luxtheme -lmsimg3
 endif
 
 ifeq ($(TARGET),l)
+LIB_DIR := /usr/lib
+INC_DIR := /usr/include
+
 # Create appimages
 # TODO: Link to linuxdeploy and appimagetool
 define create_appimage
@@ -51,10 +54,10 @@ endef
 	$(CC) -MMD -c $< $(CFLAGS) -o $@
 
 %.$(TARGET).o: %.cpp
-	$(CC) -MMD -c $< $(CFLAGS) -o $@
+	$(CXX) -MMD -c $< $(CFLAGS) -o $@
 
 %.$(TARGET).o: %.cxx
-	$(CPP) -MMD -c $< $(CFLAGS) -o $@
+	$(CXX) -MMD -c $< $(CXXFLAGS) $(CFLAGS) -o $@
 
 %.$(TARGET).o: %.S
 	$(CC) -c $< $(CFLAGS) -o $@
