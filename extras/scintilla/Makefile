@@ -18,8 +18,8 @@ ui_scintilla_win_x86_64.a: $(FILES)
 
 install: ui_scintilla_win_x86_64.a
 	sudo cp ui_scintilla_win_x86_64.a $(LIB_DIR)/ui_scintilla.a
-	-mkdir $(INC_DIR)/ui
-	sudo cp ui_scintilla.h $(INC_DIR)/ui
+	sudo mkdir -p $(INC_DIR)/ui
+	sudo cp ui_scintilla.h $(INC_DIR)/ui/ui_scintilla.h
 
 all: $(FILES)
 

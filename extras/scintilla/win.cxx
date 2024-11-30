@@ -3,11 +3,11 @@
 #include <windows.h>
 #include <richedit.h>
 #include <ui.h>
-#include "Scintilla.h"
-#include "ScintillaTypes.h"
-#include "ScintillaWin.h"
+#include <Scintilla.h>
+#include <ScintillaTypes.h>
+#include <ScintillaWin.h>
 
-#include "../libui-dev/include/ui_windows.h"
+#include "../../include/ui_windows.h"
 extern HWND utilWindow;
 extern HINSTANCE hInstance;
 extern void uiprivDestroyTooltip(uiControl* c);
@@ -51,9 +51,22 @@ _UI_EXTERN uiScintilla *uiNewScintilla() {
 
 	SendMessage(s->hwnd, SCI_STYLESETFONT, 0, reinterpret_cast<LPARAM>("Cascadia Mono"));
 
+	SendMessage(s->hwnd, SCI_STYLESETSIZE, 0, 10);
+
+	SendMessage(s->hwnd, SCI_STYLESETFORE, STYLE_DEFAULT, 0x121212);
+	SendMessage(s->hwnd, SCI_STYLESETBACK, STYLE_DEFAULT, 0x121212);
+	SendMessage(s->hwnd, SCI_SETELEMENTCOLOUR, SC_ELEMENT_CARET, 0xff0000ff);
+	SendMessage(s->hwnd, SCI_SETELEMENTCOLOUR, SC_ELEMENT_WHITE_SPACE, 0xff0000ff);
+	SendMessage(s->hwnd, SCI_SETELEMENTCOLOUR, SC_ELEMENT_WHITE_SPACE_BACK, 0xff0000ff);
+
+
 	SendMessage(s->hwnd, SCI_STYLESETSIZE, 0, 10); 
 
 	return s;
+}
+
+uintptr_t uiScintillaSendMessage(uiScintilla *s, uint32_t code, uintptr_t w, uintptr_t l) {
+	return SendMessage(s->hwnd, code, w, l);
 }
 
 void uiScintillaGetRange(uiScintilla *s, int start, int end, char *text) {
