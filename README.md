@@ -9,6 +9,7 @@ This adds a bunch of experimental features and fixes:
 - [x] Tooltips ([266](https://github.com/libui-ng/libui-ng/pull/266)/[256](https://github.com/libui-ng/libui-ng/pull/256))
 - [x] Placeholders ([224](https://github.com/libui-ng/libui-ng/pull/224))
 - [x] Fix `uiWindowSetContentSize` ([261](https://github.com/libui-ng/libui-ng/pull/261))
+- [x] Fix darwin menu + modal window issues ([295](https://github.com/libui-ng/libui-ng/pull/295))
 - [ ] uiScroll (WIP)
 - [ ] uiImage control ([209](https://github.com/andlabs/libui/pull/209))
 - [ ] uiEntry and uiEditableCombobox placeholders ([224](https://github.com/libui-ng/libui-ng/pull/224))

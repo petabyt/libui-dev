@@ -13,10 +13,13 @@ endif
 ARCH := x86_64
 
 ifeq ($(TARGET),w)
-MINGW := x86_64-w64-mingw32
+MINGW := $(ARCH)-w64-mingw32
 CC := $(MINGW)-gcc
 CPP := $(MINGW)-c++
-AR := $(MINGW)-ar
+CXX := $(MINGW)-c++
+GPP := $(MINGW)-g++
+LIB_DIR := /usr/$(ARCH)-w64-mingw32/lib
+INC_DIR := /usr/$(ARCH)-w64-mingw32/include
 
 LIBWPD_A := /usr/$(ARCH)-w64-mingw32/lib/libwpd.a
 LIBLUA_A := /usr/$(ARCH)-w64-mingw32/lib/liblua.a
@@ -30,6 +33,9 @@ WIN_LINK_ESSENTIALS += -luser32 -lkernel32 -lgdi32 -lcomctl32 -luxtheme -lmsimg3
 endif
 
 ifeq ($(TARGET),l)
+LIB_DIR := /usr/lib
+INC_DIR := /usr/include
+
 # Create appimages
 # TODO: Link to linuxdeploy and appimagetool
 define create_appimage
@@ -45,18 +51,14 @@ define convert_target
 $(patsubst %.o,%.$(TARGET).o,$1)
 endef
 
-define convert_target_to
-$(patsubst %.o,%.$2.o,$1)
-endef
-
 %.$(TARGET).o: %.c
 	$(CC) -MMD -c $< $(CFLAGS) -o $@
 
 %.$(TARGET).o: %.cpp
-	$(CC) -MMD -c $< $(CFLAGS) $(CXXFLAGS) -o $@
+	$(CXX) -MMD -c $< $(CFLAGS) -o $@
+
+%.$(TARGET).o: %.cxx
+	$(CXX) -MMD -c $< $(CXXFLAGS) $(CFLAGS) -o $@
 
 %.$(TARGET).o: %.S
-	$(CC) -c $< $(CFLAGS) -o $@
-
-%.$(TARGET).o: %.m
 	$(CC) -c $< $(CFLAGS) -o $@
