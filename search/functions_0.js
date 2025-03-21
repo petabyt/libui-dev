@@ -197,7 +197,7 @@ var searchData=
   ['uinewpasswordentry_194',['uiNewPasswordEntry',['../structui_entry.html#a92bd4ff8202b47631c8f2ad0dc719e28',1,'uiEntry']]],
   ['uinewprogressbar_195',['uiNewProgressBar',['../structui_progress_bar.html#a1ab6634478688966a233fc0e12ee8334',1,'uiProgressBar']]],
   ['uinewradiobuttons_196',['uiNewRadioButtons',['../structui_radio_buttons.html#af11217726d97856d7491ab109a70861e',1,'uiRadioButtons']]],
-  ['uinewscroll_197',['uiNewScroll',['../ui_8h.html#a9fa2db002dcf9c71050707738e10d05c',1,'ui.h']]],
+  ['uinewscroll_197',['uiNewScroll',['../ui_8h.html#acd22df5ca0e3cb0daab5e34cd45a504c',1,'ui.h']]],
   ['uinewscrollingarea_198',['uiNewScrollingArea',['../ui_8h.html#a2fa8d37f95a3ffc5377cc0d2faa66e7c',1,'ui.h']]],
   ['uinewsearchentry_199',['uiNewSearchEntry',['../structui_entry.html#ac5a01f4ac922a3334e572a9f4ce16fd5',1,'uiEntry']]],
   ['uinewsizeattribute_200',['uiNewSizeAttribute',['../ui_8h.html#a1a683aab0ee7cbce7f30a6069af8729f',1,'ui.h']]],
