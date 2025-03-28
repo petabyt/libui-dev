@@ -24,6 +24,7 @@ if(WIN32)
 	target_compile_options(ui_win32
 	    PRIVATE ${LIBUI_COMMON_FLAGS}
 	)
+	set(LIBUI_LIB ui_win32)
 elseif(APPLE)
 	file(GLOB LIBUI_DARWIN RELATIVE ${CMAKE_SOURCE_DIR} "darwin/*.m")
 	list(FILTER LIBUI_DARWIN EXCLUDE REGEX ".*OLD_table\\.m$")
@@ -37,8 +38,7 @@ elseif(APPLE)
 	target_link_libraries(ui_darwin PUBLIC
 	  "$<LINK_LIBRARY:FRAMEWORK,CoreFoundation,Foundation,AppKit,CoreText,CoreGraphics>"
 	)
-	
-	add_library(LibUI::LibUI ALIAS ui_darwin)
+	set(LIBUI_LIB ui_darwin)
 elseif(UNIX)
 	file(GLOB LIBUI_GTK3 RELATIVE ${CMAKE_SOURCE_DIR} "unix/*.c")
 	list(FILTER LIBUI_GTK3 EXCLUDE REGEX ".*OLD_table\\.c$")
@@ -55,8 +55,31 @@ elseif(UNIX)
 	target_compile_options(ui_gtk3
 	    PRIVATE ${LIBUI_COMMON_FLAGS}
 	)
-	add_library(LibUI::LibUI ALIAS ui_gtk3)
+	set(LIBUI_LIB ui_gtk3)
+else()
+	message(FATAL_ERROR "platform not supported")
 endif()
+
+add_library(LibUI::LibUI ALIAS ${LIBUI_LIB})
+
+configure_file(libui.pc.in ui.pc @ONLY)
+include(GNUInstallDirs)
+install(
+	TARGETS ${LIBUI_LIB}
+)
+install(
+	FILES
+	${CMAKE_CURRENT_SOURCE_DIR}/include/ui.h
+	${CMAKE_CURRENT_SOURCE_DIR}/include/ui_darwin.h
+	${CMAKE_CURRENT_SOURCE_DIR}/include/ui_windows.h
+	${CMAKE_CURRENT_SOURCE_DIR}/include/ui_unix.h
+	${CMAKE_CURRENT_SOURCE_DIR}/include/ui_extras.h
+	DESTINATION include/ui
+)
+install(
+	FILES ${CMAKE_CURRENT_BINARY_DIR}/ui.pc
+	DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig
+)
 
 add_executable(hello-world examples/hello-world/main.c)
 target_link_libraries(hello-world LibUI::LibUI)

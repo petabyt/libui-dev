@@ -1,0 +1,10 @@
+prefix="@CMAKE_INSTALL_PREFIX@"
+exec_prefix="${prefix}"
+libdir="${prefix}/lib"
+includedir="${prefix}/include"
+
+Name: libui-dev
+Description: A cross-platform UI library
+Version: 0.1.0
+Cflags: -I${includedir}/ui
+Libs: -Llib -Llib64 -l@LIBUI_LIB@
