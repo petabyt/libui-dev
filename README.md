@@ -28,17 +28,17 @@ Significant changes:
 - [ ] Make `uiControl` macro type-safe
 - [ ] Change `uiImage` API
 
-# Build system
-Meson build system is preserved, but a make-based system is added for cross-compilation.
+# Compiling
 ```
+# Compile with meson on Linux
+meson setup build
+meson compile -C build
+
+# Compile with cmake on Linux
+cmake -G Ninja -B build && cmake --build build
+
 # Compile for MinGW from Linux
-make TARGET=w libui_win64.a install
-
-# Compile for linux from linux
-make TARGET=l libui.so install
-
-# Compile for Mac from Darling/Mac
-make TARGET=m libui.dylib
+cmake -DCMAKE_TOOLCHAIN_FILE=extras/mingw.cmake -G Ninja -B build && cmake --build build
 ```
 
 - [x] X86_64 Linux (.so, .AppImage)
