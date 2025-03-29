@@ -24,6 +24,9 @@ if(WIN32)
 	target_compile_options(ui_win32
 	    PRIVATE ${LIBUI_COMMON_FLAGS}
 	)
+	target_link_libraries(ui_win32
+		-luser32 -lkernel32 -lgdi32 -lcomctl32 -luxtheme -lmsimg32 -lcomdlg32 -ld2d1 -ldwrite -lole32 -loleaut32 -loleacc -lssp -lurlmon -luuid -lws2_32
+	)
 	set(LIBUI_LIB ui_win32)
 elseif(APPLE)
 	file(GLOB LIBUI_DARWIN RELATIVE ${CMAKE_SOURCE_DIR} "darwin/*.m")
