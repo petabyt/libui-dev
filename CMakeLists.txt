@@ -32,7 +32,9 @@ elseif(APPLE)
 	file(GLOB LIBUI_DARWIN RELATIVE ${CMAKE_SOURCE_DIR} "darwin/*.m")
 	list(FILTER LIBUI_DARWIN EXCLUDE REGEX ".*OLD_table\\.m$")
 
-	add_library(ui_darwin STATIC ${LIBUI_COMMON} ${LIBUI_DARWIN})
+	add_library(ui_darwin STATIC ${LIBUI_COMMON} ${LIBUI_DARWIN}
+		${CMAKE_CURRENT_SOURCE_DIR}/extras/favicon/darwin.c		
+	)
 	target_include_directories(ui_darwin PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/darwin ${CMAKE_CURRENT_SOURCE_DIR} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 	target_compile_options(ui_darwin
 	    PRIVATE ${LIBUI_COMMON_FLAGS}
