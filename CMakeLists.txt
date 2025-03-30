@@ -7,13 +7,13 @@
 cmake_minimum_required(VERSION 3.20)
 project(ui)
 
-file(GLOB LIBUI_COMMON RELATIVE ${CMAKE_SOURCE_DIR} "common/*.c")
+file(GLOB LIBUI_COMMON ABSOLUTE ${CMAKE_SOURCE_DIR} "common/*.c")
 list(FILTER LIBUI_COMMON EXCLUDE REGEX ".*OLD_table\\.c$")
 
 set(LIBUI_COMMON_FLAGS -fvisibility=hidden -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -Wextra -Wpedantic -Wno-unused-parameter -Wno-switch -D_UI_STATIC -Dlibui_EXPORTS)
 
 if(WIN32)
-	file(GLOB LIBUI_WIN RELATIVE ${CMAKE_SOURCE_DIR} "windows/*.cpp")
+	file(GLOB LIBUI_WIN ABSOLUTE ${CMAKE_SOURCE_DIR} "windows/*.cpp")
 
 	add_library(ui_win32 STATIC ${LIBUI_COMMON} ${LIBUI_WIN}
 		${CMAKE_CURRENT_SOURCE_DIR}/extras/favicon/win.cpp
@@ -29,7 +29,7 @@ if(WIN32)
 	)
 	set(LIBUI_LIB ui_win32)
 elseif(APPLE)
-	file(GLOB LIBUI_DARWIN RELATIVE ${CMAKE_SOURCE_DIR} "darwin/*.m")
+	file(GLOB LIBUI_DARWIN ABSOLUTE ${CMAKE_SOURCE_DIR} "darwin/*.m")
 	list(FILTER LIBUI_DARWIN EXCLUDE REGEX ".*OLD_table\\.m$")
 
 	add_library(ui_darwin STATIC ${LIBUI_COMMON} ${LIBUI_DARWIN}
@@ -45,7 +45,7 @@ elseif(APPLE)
 	)
 	set(LIBUI_LIB ui_darwin)
 elseif(UNIX)
-	file(GLOB LIBUI_GTK3 RELATIVE ${CMAKE_SOURCE_DIR} "unix/*.c")
+	file(GLOB LIBUI_GTK3 ABSOLUTE ${CMAKE_SOURCE_DIR} "unix/*.c")
 	list(FILTER LIBUI_GTK3 EXCLUDE REGEX ".*OLD_table\\.c$")
 
 	find_package(PkgConfig REQUIRED)
