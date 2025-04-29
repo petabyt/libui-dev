@@ -4,8 +4,11 @@
 # export LD_LIBRARY_PATH=/lib:/usr/lib:/usr/local/lib
 # cmake -DCMAKE_TOOLCHAIN_FILE=extras/darwin.cmake -G Ninja -B build_osx && cmake --build build_osx
 
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.15)
 project(ui)
+
+option(LIBUI_COMPILE_EXAMPLES "" ON)
+option(LIBUI_INCLUDE_INSTALL "" ON)
 
 file(GLOB LIBUI_COMMON ABSOLUTE ${PROJECT_SOURCE_DIR} "common/*.c")
 list(FILTER LIBUI_COMMON EXCLUDE REGEX ".*OLD_table\\.c$")
@@ -68,27 +71,31 @@ endif()
 
 add_library(LibUI::LibUI ALIAS ${LIBUI_LIB})
 
-configure_file(libui.pc.in ui.pc @ONLY)
-include(GNUInstallDirs)
-install(
-	TARGETS ${LIBUI_LIB}
-)
-install(
-	FILES
-	${PROJECT_SOURCE_DIR}/include/ui.h
-	${PROJECT_SOURCE_DIR}/include/ui_darwin.h
-	${PROJECT_SOURCE_DIR}/include/ui_windows.h
-	${PROJECT_SOURCE_DIR}/include/ui_unix.h
-	${PROJECT_SOURCE_DIR}/include/ui_extras.h
-	DESTINATION include/ui
-)
-install(
-	FILES ${CMAKE_CURRENT_BINARY_DIR}/ui.pc
-	DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig
-)
+if(LIBUI_INCLUDE_INSTALL)
+	configure_file(libui.pc.in ui.pc @ONLY)
+	include(GNUInstallDirs)
+	install(
+		TARGETS ${LIBUI_LIB}
+	)
+	install(
+		FILES
+		${PROJECT_SOURCE_DIR}/include/ui.h
+		${PROJECT_SOURCE_DIR}/include/ui_darwin.h
+		${PROJECT_SOURCE_DIR}/include/ui_windows.h
+		${PROJECT_SOURCE_DIR}/include/ui_unix.h
+		${PROJECT_SOURCE_DIR}/include/ui_extras.h
+		DESTINATION include/ui
+	)
+	install(
+		FILES ${CMAKE_CURRENT_BINARY_DIR}/ui.pc
+		DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig
+	)
+endif()
 
-add_executable(hello-world examples/hello-world/main.c)
-target_link_libraries(hello-world LibUI::LibUI)
+if(LIBUI_COMPILE_EXAMPLES)
+	add_executable(hello-world examples/hello-world/main.c)
+	target_link_libraries(hello-world LibUI::LibUI)
 
-add_executable(controlgallery examples/controlgallery/main.c)
-target_link_libraries(controlgallery LibUI::LibUI)
+	add_executable(controlgallery examples/controlgallery/main.c)
+	target_link_libraries(controlgallery LibUI::LibUI)
+endif()
