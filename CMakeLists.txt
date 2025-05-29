@@ -1,14 +1,10 @@
-# cmake -DCMAKE_TOOLCHAIN_FILE=extras/mingw.cmake -G Ninja -B build_win && cmake --build build_win
-# cmake -G Ninja -B build && cmake --build build
-
-# export LD_LIBRARY_PATH=/lib:/usr/lib:/usr/local/lib
-# cmake -DCMAKE_TOOLCHAIN_FILE=extras/darwin.cmake -G Ninja -B build_osx && cmake --build build_osx
-
 cmake_minimum_required(VERSION 3.15)
 project(ui)
 
 option(LIBUI_COMPILE_EXAMPLES "" ON)
 option(LIBUI_INCLUDE_INSTALL "" ON)
+option(LIBUI_COMPILE_GTK3 "Compile GTK3 on Linux" ON)
+option(LIBUI_COMPILE_QT5 "Compile Qt5 on Linux" OFF)
 
 file(GLOB LIBUI_COMMON ABSOLUTE ${PROJECT_SOURCE_DIR} "common/*.c")
 list(FILTER LIBUI_COMMON EXCLUDE REGEX ".*OLD_table\\.c$")
@@ -51,22 +47,40 @@ elseif(APPLE)
 	)
 	set(LIBUI_LIB ui_darwin)
 elseif(UNIX)
-	file(GLOB LIBUI_GTK3 ABSOLUTE ${PROJECT_SOURCE_DIR} "unix/*.c")
-	list(FILTER LIBUI_GTK3 EXCLUDE REGEX ".*OLD_table\\.c$")
+	if(LIBUI_COMPILE_GTK3)
+		file(GLOB LIBUI_GTK3 ABSOLUTE ${PROJECT_SOURCE_DIR} "unix/*.c")
+		list(FILTER LIBUI_GTK3 EXCLUDE REGEX ".*OLD_table\\.c$")
 
-    find_package(PkgConfig REQUIRED)
-    pkg_check_modules(GTK3 IMPORTED_TARGET GLOBAL gtk+-3.0)
+	    find_package(PkgConfig REQUIRED)
+	    pkg_check_modules(GTK3 IMPORTED_TARGET GLOBAL gtk+-3.0)
 
-	add_library(ui_gtk3 STATIC ${LIBUI_COMMON} ${LIBUI_GTK3}
-		${CMAKE_CURRENT_SOURCE_DIR}/extras/favicon/linux.c
-		${CMAKE_CURRENT_SOURCE_DIR}/extras/label.c
-	)
-	target_include_directories(ui_gtk3 PRIVATE ${PROJECT_SOURCE_DIR}/unix ${PROJECT_SOURCE_DIR} PUBLIC ${PROJECT_SOURCE_DIR}/include)
-	target_link_libraries(ui_gtk3 PkgConfig::GTK3)
-	target_compile_options(ui_gtk3
-	    PRIVATE ${LIBUI_COMMON_FLAGS}
-	)
-	set(LIBUI_LIB ui_gtk3)
+		add_library(ui_gtk3 STATIC ${LIBUI_COMMON} ${LIBUI_GTK3}
+			${CMAKE_CURRENT_SOURCE_DIR}/extras/favicon/linux.c
+			${CMAKE_CURRENT_SOURCE_DIR}/extras/label.c
+		)
+		target_include_directories(ui_gtk3 PRIVATE ${PROJECT_SOURCE_DIR}/unix ${PROJECT_SOURCE_DIR} PUBLIC ${PROJECT_SOURCE_DIR}/include)
+		target_link_libraries(ui_gtk3 PkgConfig::GTK3)
+		target_compile_options(ui_gtk3
+		    PRIVATE ${LIBUI_COMMON_FLAGS}
+		)
+		set(LIBUI_LIB ui_gtk3)
+	elseif(LIBUI_COMPILE_QT5)
+		find_package(PkgConfig REQUIRED)
+		pkg_check_modules(QT IMPORTED_TARGET GLOBAL Qt5Widgets)
+		file(GLOB LIBUI_QT5 ABSOLUTE ${PROJECT_SOURCE_DIR} "qt5/*.cpp")
+		add_library(ui_qt5 SHARED ${LIBUI_COMMON} ${LIBUI_QT5})
+		target_include_directories(ui_qt5 PRIVATE ${PROJECT_SOURCE_DIR}/qt5 ${PROJECT_SOURCE_DIR} PUBLIC ${PROJECT_SOURCE_DIR}/include)
+		target_link_libraries(ui_qt5 PkgConfig::QT)
+		target_compile_options(ui_qt5
+		    PRIVATE ${LIBUI_COMMON_FLAGS}
+		)
+		set(LIBUI_LIB ui_qt5)
+		#if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+		#	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DQT_NO_DEBUG")
+		#else()
+		#	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DQT_DEBUG")
+		#endif()
+	endif()
 else()
 	message(FATAL_ERROR "platform not supported")
 endif()
