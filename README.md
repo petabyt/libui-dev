@@ -11,6 +11,8 @@ This adds a bunch of experimental features and fixes:
 - [x] Fix `uiWindowSetContentSize` ([261](https://github.com/libui-ng/libui-ng/pull/261))
 - [x] Fix darwin menu + modal window issues ([295](https://github.com/libui-ng/libui-ng/pull/295))
 - [x] Optional type safety with C11 generics (See `ui_safe.h`)
+- [x] Code editing control `uiScintilla` (https://github.com/petabyt/libui-scintilla)
+- [x] Merge in unfinished qt5 backend (https://github.com/mischnic/libui/tree/qt5)
 - [ ] Add uiDragDestination for text and file drop. https://github.com/libui-ng/libui-ng/pull/245
 - [ ] [OnFilesDropped](https://github.com/matyalatte/libui-ng/commit/f3782dc426354eb09f04b8d2e1d28dbaef528ee0)
 - [ ] uiScroll (WIP)
@@ -22,8 +24,7 @@ This adds a bunch of experimental features and fixes:
 - [ ] uiDrawBitmap ([386](https://github.com/andlabs/libui/pull/386))
 - [ ] OpenGLArea ([405](https://github.com/andlabs/libui/pull/405))
 - [ ] Expose more system functions to make adding controls easier
-- [x] Code editing control `uiScintilla` (https://github.com/petabyt/libui-scintilla)
-- [x] Merge in unfinished qt5 backend (https://github.com/mischnic/libui/tree/qt5)
+- [ ] Arena allocator for uiControl handles
 
 Potentially breaking changes:
 - [x] Moved include files to include/
