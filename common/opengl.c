@@ -1,7 +1,5 @@
-// 28 may 2016
-
 #include <stdlib.h>
-#include "../ui.h"
+#include <ui.h>
 #include "uipriv.h"
 
 uiOpenGLAttributes *uiNewOpenGLAttributes() {

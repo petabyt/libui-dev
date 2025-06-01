@@ -4110,6 +4110,7 @@ _UI_EXTERN void uiScrollSetChild(uiScroll *scroll, uiControl *ctl);
 // Experimental - use uiAttribute API on normal widgets
 _UI_EXTERN void uiLabelSetAttribute(uiLabel *label, uiAttribute *attr);
 
+#include <ui_extras.h>
 
 #ifdef __cplusplus
 }
