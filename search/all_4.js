@@ -8,6 +8,7 @@ var searchData=
   ['dialog_20windows_5',['Dialog windows',['../group__dialog_window.html',1,'']]],
   ['disable_6',['Disable',['../structui_control.html#a6967e0f7e4051050ccc910126478ed25',1,'uiControl']]],
   ['down_7',['Down',['../structui_area_mouse_event.html#aa850c62150d1c26b1e049fde82bc4b9b',1,'uiAreaMouseEvent']]],
-  ['dragbroken_8',['DragBroken',['../structui_area_handler.html#a4da629c6feacb7918e6d9c306c2ddb1b',1,'uiAreaHandler']]],
-  ['draw_9',['Draw',['../structui_area_handler.html#acfd2a1783c5b31ddcb5acb7ace6231b2',1,'uiAreaHandler']]]
+  ['dragbroken_8',['DragBroken',['../structui_area_handler.html#a4da629c6feacb7918e6d9c306c2ddb1b',1,'uiAreaHandler::DragBroken'],['../structui_open_g_l_area_handler.html#ab4bf52bdaf03e093393a4051efeef4eb',1,'uiOpenGLAreaHandler::DragBroken']]],
+  ['draw_9',['Draw',['../structui_area_handler.html#acfd2a1783c5b31ddcb5acb7ace6231b2',1,'uiAreaHandler']]],
+  ['drawgl_10',['DrawGL',['../structui_open_g_l_area_handler.html#a4cea18a58467af29391973b851d3425e',1,'uiOpenGLAreaHandler']]]
 ];

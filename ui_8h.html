@@ -101,7 +101,6 @@ $(function(){ initResizable(false); });
 <div class="contents">
 <div class="textblock"><code>#include &lt;stddef.h&gt;</code><br />
 <code>#include &lt;stdint.h&gt;</code><br />
-<code>#include &lt;ui_extras.h&gt;</code><br />
 </div>
 <p><a href="ui_8h_source.html">Go to the source code of this file.</a></p>
 <table class="memberdecls">
@@ -143,6 +142,8 @@ Classes</h2></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structui_table_selection.html">uiTableSelection</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Holds an array of selected row indices for a table.  <a href="structui_table_selection.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structui_open_g_l_area_handler.html">uiOpenGLAreaHandler</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="define-members" name="define-members"></a>
@@ -213,6 +214,8 @@ Macros</h2></td></tr>
 <tr class="separator:a4d94905d7bcbf9c4ad9e22b28f076690"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:acd26d4dfb9e9476cd4b0b7797eb3794c" id="r_acd26d4dfb9e9476cd4b0b7797eb3794c"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#acd26d4dfb9e9476cd4b0b7797eb3794c">uiTable</a>(this)</td></tr>
 <tr class="separator:acd26d4dfb9e9476cd4b0b7797eb3794c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae890021a52052a8417529099f84c6c8b" id="r_ae890021a52052a8417529099f84c6c8b"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ae890021a52052a8417529099f84c6c8b">uiOpenGLArea</a>(this)</td></tr>
+<tr class="separator:ae890021a52052a8417529099f84c6c8b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="typedef-members" name="typedef-members"></a>
 Typedefs</h2></td></tr>
@@ -362,6 +365,14 @@ Typedefs</h2></td></tr>
 <tr class="separator:a865ddc723a20be99290ca1190df92c2d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a02e43928a6a160985a8b869da424ffd3" id="r_a02e43928a6a160985a8b869da424ffd3"><td class="memItemLeft" align="right" valign="top">typedef struct <a class="el" href="#a02e43928a6a160985a8b869da424ffd3">uiScroll</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a02e43928a6a160985a8b869da424ffd3">uiScroll</a></td></tr>
 <tr class="separator:a02e43928a6a160985a8b869da424ffd3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:accf70a878ae88b39895953183d0fb42d" id="r_accf70a878ae88b39895953183d0fb42d"><td class="memItemLeft" align="right" valign="top">typedef struct <a class="el" href="#accf70a878ae88b39895953183d0fb42d">uiOpenGLArea</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#accf70a878ae88b39895953183d0fb42d">uiOpenGLArea</a></td></tr>
+<tr class="separator:accf70a878ae88b39895953183d0fb42d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a799a4b8236332476e0f3a5c6e30b33b6" id="r_a799a4b8236332476e0f3a5c6e30b33b6"><td class="memItemLeft" align="right" valign="top">typedef struct uiOpenGLAreaHandler&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a799a4b8236332476e0f3a5c6e30b33b6">uiOpenGLAreaHandler</a></td></tr>
+<tr class="separator:a799a4b8236332476e0f3a5c6e30b33b6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a09b0877d48a11eddd3f0b493d70d4786" id="r_a09b0877d48a11eddd3f0b493d70d4786"><td class="memItemLeft" align="right" valign="top">typedef struct <a class="el" href="#a09b0877d48a11eddd3f0b493d70d4786">uiOpenGLAttributes</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a09b0877d48a11eddd3f0b493d70d4786">uiOpenGLAttributes</a></td></tr>
+<tr class="separator:a09b0877d48a11eddd3f0b493d70d4786"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a21b1d5ae128932042aad3967e25a054b" id="r_a21b1d5ae128932042aad3967e25a054b"><td class="memItemLeft" align="right" valign="top">typedef enum <a class="el" href="#a8066051c8a58cb6e531dce280c7f52f1">uiOpenGLAttribute</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a21b1d5ae128932042aad3967e25a054b">uiOpenGLAttribute</a></td></tr>
+<tr class="separator:a21b1d5ae128932042aad3967e25a054b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="enum-members" name="enum-members"></a>
 Enumerations</h2></td></tr>
@@ -568,6 +579,31 @@ Enumerations</h2></td></tr>
  }</td></tr>
 <tr class="memdesc:ga000176d636c27d3084639d2ed6d4ce29"><td class="mdescLeft">&#160;</td><td class="mdescRight">Table selection modes.  <a href="group__table.html#ga000176d636c27d3084639d2ed6d4ce29">More...</a><br /></td></tr>
 <tr class="separator:ga000176d636c27d3084639d2ed6d4ce29"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8066051c8a58cb6e531dce280c7f52f1" id="r_a8066051c8a58cb6e531dce280c7f52f1"><td class="memItemLeft" align="right" valign="top">enum &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a8066051c8a58cb6e531dce280c7f52f1">uiOpenGLAttribute</a> { <br />
+&#160;&#160;<a class="el" href="#a8066051c8a58cb6e531dce280c7f52f1af1243bb103c10b3f3457411a3b66b08e">uiOpenGLAttributeRedBits</a>
+, <a class="el" href="#a8066051c8a58cb6e531dce280c7f52f1a7c7625265b60ffec8a8fa8d081308a2d">uiOpenGLAttributeGreenBits</a>
+, <a class="el" href="#a8066051c8a58cb6e531dce280c7f52f1ab3474c27505ce42c8af5fb3e52eda3a5">uiOpenGLAttributeBlueBits</a>
+, <a class="el" href="#a8066051c8a58cb6e531dce280c7f52f1adc102f35bae996c5c3f37ef7ae8ed549">uiOpenGLAttributeAlphaBits</a>
+, <br />
+&#160;&#160;<a class="el" href="#a8066051c8a58cb6e531dce280c7f52f1ab0403969e46c416aadbf360ef87a40a6">uiOpenGLAttributeDepthBits</a>
+, <a class="el" href="#a8066051c8a58cb6e531dce280c7f52f1a7a4ee24b251b39e25ba6e7b73faa2d1a">uiOpenGLAttributeStencilBits</a>
+, <a class="el" href="#a8066051c8a58cb6e531dce280c7f52f1a9764c4454dae215c0f7cd80b4c25d6fa">uiOpenGLAttributeStereo</a>
+, <a class="el" href="#a8066051c8a58cb6e531dce280c7f52f1a3302fb17404e94cb8a7feaa0f93f5df2">uiOpenGLAttributeSamples</a>
+, <br />
+&#160;&#160;<a class="el" href="#a8066051c8a58cb6e531dce280c7f52f1a9b21bd51e5e8371c90807ce9443a6a74">uiOpenGLAttributeSRGBCapable</a>
+, <a class="el" href="#a8066051c8a58cb6e531dce280c7f52f1a093127387efcaee693b952988750a618">uiOpenGLAttributeDoubleBuffer</a>
+, <a class="el" href="#a8066051c8a58cb6e531dce280c7f52f1a573686d242634d430ffe474f27f594c9">uiOpenGLAttributeUseOpenGLES</a>
+, <a class="el" href="#a8066051c8a58cb6e531dce280c7f52f1a26085cfdcc9fe6fef85c5975fe551275">uiOpenGLAttributeMajorVersion</a>
+, <br />
+&#160;&#160;<a class="el" href="#a8066051c8a58cb6e531dce280c7f52f1a000f13e2627f5b8ef27c610ab151256b">uiOpenGLAttributeMinorVersion</a>
+, <a class="el" href="#a8066051c8a58cb6e531dce280c7f52f1af9ae4c1f947c1abd29bd86956f367020">uiOpenGLAttributeForwardCompat</a>
+, <a class="el" href="#a8066051c8a58cb6e531dce280c7f52f1a076347429afcdded6ae8936aa90e3e54">uiOpenGLAttributeDebugContext</a>
+, <a class="el" href="#a8066051c8a58cb6e531dce280c7f52f1acbb469227bc7c735024623b66e28db0a">uiOpenGLAttributeCompatProfile</a>
+, <br />
+&#160;&#160;<a class="el" href="#a8066051c8a58cb6e531dce280c7f52f1ad7936acc763294fa58269a2ca6a8e651">uiOpenGLAttributeRobustness</a>
+<br />
+ }</td></tr>
+<tr class="separator:a8066051c8a58cb6e531dce280c7f52f1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="func-members" name="func-members"></a>
 Functions</h2></td></tr>
@@ -779,6 +815,26 @@ Functions</h2></td></tr>
 <tr class="separator:ade122312efcb17432ded0db06c88b101"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1fe3310da54973d7387f8802e319ef57" id="r_a1fe3310da54973d7387f8802e319ef57"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a1fe3310da54973d7387f8802e319ef57">uiLabelSetAttribute</a> (<a class="el" href="structui_label.html">uiLabel</a> *label, <a class="el" href="#a53fecbd81ee669c033fb18a6aa025c08">uiAttribute</a> *attr)</td></tr>
 <tr class="separator:a1fe3310da54973d7387f8802e319ef57"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac00d1c4dc3062742396de07e8dfd477d" id="r_ac00d1c4dc3062742396de07e8dfd477d"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ac00d1c4dc3062742396de07e8dfd477d">uiOpenGLAreaBeginUserWindowMove</a> (<a class="el" href="#accf70a878ae88b39895953183d0fb42d">uiOpenGLArea</a> *a)</td></tr>
+<tr class="separator:ac00d1c4dc3062742396de07e8dfd477d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a328dc3ae963e421582cb58c7426148e8" id="r_a328dc3ae963e421582cb58c7426148e8"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a328dc3ae963e421582cb58c7426148e8">uiOpenGLAreaBeginUserWindowResize</a> (<a class="el" href="#accf70a878ae88b39895953183d0fb42d">uiOpenGLArea</a> *a, <a class="el" href="#a0a56573f5bd7c430a54ac03419c4dd63">uiWindowResizeEdge</a> edge)</td></tr>
+<tr class="separator:a328dc3ae963e421582cb58c7426148e8"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4197cd9360c5a85485d7a67bfdf5216b" id="r_a4197cd9360c5a85485d7a67bfdf5216b"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a4197cd9360c5a85485d7a67bfdf5216b">uiOpenGLAreaSetVSync</a> (<a class="el" href="#accf70a878ae88b39895953183d0fb42d">uiOpenGLArea</a> *a, int v)</td></tr>
+<tr class="separator:a4197cd9360c5a85485d7a67bfdf5216b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:abc9d980e0963c49b93b37e0f6983ba34" id="r_abc9d980e0963c49b93b37e0f6983ba34"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#abc9d980e0963c49b93b37e0f6983ba34">uiOpenGLAreaQueueRedrawAll</a> (<a class="el" href="#accf70a878ae88b39895953183d0fb42d">uiOpenGLArea</a> *a)</td></tr>
+<tr class="separator:abc9d980e0963c49b93b37e0f6983ba34"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aaddef23e53f148f7b8260884d678a56f" id="r_aaddef23e53f148f7b8260884d678a56f"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#aaddef23e53f148f7b8260884d678a56f">uiOpenGLAreaMakeCurrent</a> (<a class="el" href="#accf70a878ae88b39895953183d0fb42d">uiOpenGLArea</a> *a)</td></tr>
+<tr class="separator:aaddef23e53f148f7b8260884d678a56f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a50253eb09b5a0519cefee1467978aec5" id="r_a50253eb09b5a0519cefee1467978aec5"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a50253eb09b5a0519cefee1467978aec5">uiOpenGLAreaSwapBuffers</a> (<a class="el" href="#accf70a878ae88b39895953183d0fb42d">uiOpenGLArea</a> *a)</td></tr>
+<tr class="separator:a50253eb09b5a0519cefee1467978aec5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4cb46b99c511cf28ea1ebbf29e199ef5" id="r_a4cb46b99c511cf28ea1ebbf29e199ef5"><td class="memItemLeft" align="right" valign="top"><a class="el" href="#accf70a878ae88b39895953183d0fb42d">uiOpenGLArea</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a4cb46b99c511cf28ea1ebbf29e199ef5">uiNewOpenGLArea</a> (<a class="el" href="structui_open_g_l_area_handler.html">uiOpenGLAreaHandler</a> *ah, <a class="el" href="#a09b0877d48a11eddd3f0b493d70d4786">uiOpenGLAttributes</a> *attribs)</td></tr>
+<tr class="separator:a4cb46b99c511cf28ea1ebbf29e199ef5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a04d7f3c4ad605a38888e7e32746c5109" id="r_a04d7f3c4ad605a38888e7e32746c5109"><td class="memItemLeft" align="right" valign="top"><a class="el" href="#a09b0877d48a11eddd3f0b493d70d4786">uiOpenGLAttributes</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a04d7f3c4ad605a38888e7e32746c5109">uiNewOpenGLAttributes</a> ()</td></tr>
+<tr class="separator:a04d7f3c4ad605a38888e7e32746c5109"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0fedd8a89b6c27c250676ccb94d7b719" id="r_a0fedd8a89b6c27c250676ccb94d7b719"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a0fedd8a89b6c27c250676ccb94d7b719">uiFreeOpenGLAttributes</a> (<a class="el" href="#a09b0877d48a11eddd3f0b493d70d4786">uiOpenGLAttributes</a> *attribs)</td></tr>
+<tr class="separator:a0fedd8a89b6c27c250676ccb94d7b719"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5339fd2804001cc2ca18c9c1d224fea3" id="r_a5339fd2804001cc2ca18c9c1d224fea3"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a5339fd2804001cc2ca18c9c1d224fea3">uiOpenGLAttributesSetAttribute</a> (<a class="el" href="#a09b0877d48a11eddd3f0b493d70d4786">uiOpenGLAttributes</a> *attribs, <a class="el" href="#a8066051c8a58cb6e531dce280c7f52f1">uiOpenGLAttribute</a> attribute, int value)</td></tr>
+<tr class="separator:a5339fd2804001cc2ca18c9c1d224fea3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <h2 class="groupheader">Macro Definition Documentation</h2>
 <a id="a0eff902ec2abba6cba593e97d6396a42" name="a0eff902ec2abba6cba593e97d6396a42"></a>
@@ -1166,6 +1222,25 @@ Functions</h2></td></tr>
 </div><div class="memdoc">
 <b>Value:</b><div class="fragment"><div class="line">((<a class="code hl_define" href="#a165725f3229ccb29da911ceaa1f12163">uiMultilineEntry</a> *) (<span class="keyword">this</span>))</div>
 <div class="ttc" id="aui_8h_html_a165725f3229ccb29da911ceaa1f12163"><div class="ttname"><a href="#a165725f3229ccb29da911ceaa1f12163">uiMultilineEntry</a></div><div class="ttdeci">#define uiMultilineEntry(this)</div><div class="ttdef"><b>Definition</b> ui.h:1746</div></div>
+</div><!-- fragment -->
+</div>
+</div>
+<a id="ae890021a52052a8417529099f84c6c8b" name="ae890021a52052a8417529099f84c6c8b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae890021a52052a8417529099f84c6c8b">&#9670;&#160;</a></span>uiOpenGLArea</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">#define <a class="el" href="#accf70a878ae88b39895953183d0fb42d">uiOpenGLArea</a></td>
+          <td>(</td>
+          <td class="paramtype"></td>          <td class="paramname"><span class="paramname"><em>this</em></span></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<b>Value:</b><div class="fragment"><div class="line">((<a class="code hl_define" href="#ae890021a52052a8417529099f84c6c8b">uiOpenGLArea</a> *) (<span class="keyword">this</span>))</div>
+<div class="ttc" id="aui_8h_html_ae890021a52052a8417529099f84c6c8b"><div class="ttname"><a href="#ae890021a52052a8417529099f84c6c8b">uiOpenGLArea</a></div><div class="ttdeci">#define uiOpenGLArea(this)</div><div class="ttdef"><b>Definition</b> ui.h:4116</div></div>
 </div><!-- fragment -->
 </div>
 </div>
@@ -2026,6 +2101,62 @@ Functions</h2></td></tr>
 
 </div>
 </div>
+<a id="accf70a878ae88b39895953183d0fb42d" name="accf70a878ae88b39895953183d0fb42d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#accf70a878ae88b39895953183d0fb42d">&#9670;&#160;</a></span>uiOpenGLArea</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">typedef struct <a class="el" href="#accf70a878ae88b39895953183d0fb42d">uiOpenGLArea</a> <a class="el" href="#accf70a878ae88b39895953183d0fb42d">uiOpenGLArea</a></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a799a4b8236332476e0f3a5c6e30b33b6" name="a799a4b8236332476e0f3a5c6e30b33b6"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a799a4b8236332476e0f3a5c6e30b33b6">&#9670;&#160;</a></span>uiOpenGLAreaHandler</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">typedef struct uiOpenGLAreaHandler uiOpenGLAreaHandler</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a21b1d5ae128932042aad3967e25a054b" name="a21b1d5ae128932042aad3967e25a054b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a21b1d5ae128932042aad3967e25a054b">&#9670;&#160;</a></span>uiOpenGLAttribute</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">typedef enum <a class="el" href="#a8066051c8a58cb6e531dce280c7f52f1">uiOpenGLAttribute</a> <a class="el" href="#a8066051c8a58cb6e531dce280c7f52f1">uiOpenGLAttribute</a></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a09b0877d48a11eddd3f0b493d70d4786" name="a09b0877d48a11eddd3f0b493d70d4786"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a09b0877d48a11eddd3f0b493d70d4786">&#9670;&#160;</a></span>uiOpenGLAttributes</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">typedef struct <a class="el" href="#a09b0877d48a11eddd3f0b493d70d4786">uiOpenGLAttributes</a> <a class="el" href="#a09b0877d48a11eddd3f0b493d70d4786">uiOpenGLAttributes</a></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="acd882751b0b5e7c73a9524d43f6d1819" name="acd882751b0b5e7c73a9524d43f6d1819"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#acd882751b0b5e7c73a9524d43f6d1819">&#9670;&#160;</a></span>uiOpenTypeFeatures</h2>
 
@@ -2662,6 +2793,39 @@ Functions</h2></td></tr>
 </td></tr>
 <tr><td class="fieldname"><a id="a442ebdd87ab6ebc4a2427ca541a7ab41a51d6aa4dd0c382cb1fba739887eec329" name="a442ebdd87ab6ebc4a2427ca541a7ab41a51d6aa4dd0c382cb1fba739887eec329"></a>uiModifierSuper&#160;</td><td class="fielddoc"><p>Super/Command/Windows key. </p>
 </td></tr>
+</table>
+
+</div>
+</div>
+<a id="a8066051c8a58cb6e531dce280c7f52f1" name="a8066051c8a58cb6e531dce280c7f52f1"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8066051c8a58cb6e531dce280c7f52f1">&#9670;&#160;</a></span>uiOpenGLAttribute</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">enum <a class="el" href="#a8066051c8a58cb6e531dce280c7f52f1">uiOpenGLAttribute</a></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<table class="fieldtable">
+<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="a8066051c8a58cb6e531dce280c7f52f1af1243bb103c10b3f3457411a3b66b08e" name="a8066051c8a58cb6e531dce280c7f52f1af1243bb103c10b3f3457411a3b66b08e"></a>uiOpenGLAttributeRedBits&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a8066051c8a58cb6e531dce280c7f52f1a7c7625265b60ffec8a8fa8d081308a2d" name="a8066051c8a58cb6e531dce280c7f52f1a7c7625265b60ffec8a8fa8d081308a2d"></a>uiOpenGLAttributeGreenBits&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a8066051c8a58cb6e531dce280c7f52f1ab3474c27505ce42c8af5fb3e52eda3a5" name="a8066051c8a58cb6e531dce280c7f52f1ab3474c27505ce42c8af5fb3e52eda3a5"></a>uiOpenGLAttributeBlueBits&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a8066051c8a58cb6e531dce280c7f52f1adc102f35bae996c5c3f37ef7ae8ed549" name="a8066051c8a58cb6e531dce280c7f52f1adc102f35bae996c5c3f37ef7ae8ed549"></a>uiOpenGLAttributeAlphaBits&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a8066051c8a58cb6e531dce280c7f52f1ab0403969e46c416aadbf360ef87a40a6" name="a8066051c8a58cb6e531dce280c7f52f1ab0403969e46c416aadbf360ef87a40a6"></a>uiOpenGLAttributeDepthBits&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a8066051c8a58cb6e531dce280c7f52f1a7a4ee24b251b39e25ba6e7b73faa2d1a" name="a8066051c8a58cb6e531dce280c7f52f1a7a4ee24b251b39e25ba6e7b73faa2d1a"></a>uiOpenGLAttributeStencilBits&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a8066051c8a58cb6e531dce280c7f52f1a9764c4454dae215c0f7cd80b4c25d6fa" name="a8066051c8a58cb6e531dce280c7f52f1a9764c4454dae215c0f7cd80b4c25d6fa"></a>uiOpenGLAttributeStereo&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a8066051c8a58cb6e531dce280c7f52f1a3302fb17404e94cb8a7feaa0f93f5df2" name="a8066051c8a58cb6e531dce280c7f52f1a3302fb17404e94cb8a7feaa0f93f5df2"></a>uiOpenGLAttributeSamples&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a8066051c8a58cb6e531dce280c7f52f1a9b21bd51e5e8371c90807ce9443a6a74" name="a8066051c8a58cb6e531dce280c7f52f1a9b21bd51e5e8371c90807ce9443a6a74"></a>uiOpenGLAttributeSRGBCapable&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a8066051c8a58cb6e531dce280c7f52f1a093127387efcaee693b952988750a618" name="a8066051c8a58cb6e531dce280c7f52f1a093127387efcaee693b952988750a618"></a>uiOpenGLAttributeDoubleBuffer&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a8066051c8a58cb6e531dce280c7f52f1a573686d242634d430ffe474f27f594c9" name="a8066051c8a58cb6e531dce280c7f52f1a573686d242634d430ffe474f27f594c9"></a>uiOpenGLAttributeUseOpenGLES&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a8066051c8a58cb6e531dce280c7f52f1a26085cfdcc9fe6fef85c5975fe551275" name="a8066051c8a58cb6e531dce280c7f52f1a26085cfdcc9fe6fef85c5975fe551275"></a>uiOpenGLAttributeMajorVersion&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a8066051c8a58cb6e531dce280c7f52f1a000f13e2627f5b8ef27c610ab151256b" name="a8066051c8a58cb6e531dce280c7f52f1a000f13e2627f5b8ef27c610ab151256b"></a>uiOpenGLAttributeMinorVersion&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a8066051c8a58cb6e531dce280c7f52f1af9ae4c1f947c1abd29bd86956f367020" name="a8066051c8a58cb6e531dce280c7f52f1af9ae4c1f947c1abd29bd86956f367020"></a>uiOpenGLAttributeForwardCompat&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a8066051c8a58cb6e531dce280c7f52f1a076347429afcdded6ae8936aa90e3e54" name="a8066051c8a58cb6e531dce280c7f52f1a076347429afcdded6ae8936aa90e3e54"></a>uiOpenGLAttributeDebugContext&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a8066051c8a58cb6e531dce280c7f52f1acbb469227bc7c735024623b66e28db0a" name="a8066051c8a58cb6e531dce280c7f52f1acbb469227bc7c735024623b66e28db0a"></a>uiOpenGLAttributeCompatProfile&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a8066051c8a58cb6e531dce280c7f52f1ad7936acc763294fa58269a2ca6a8e651" name="a8066051c8a58cb6e531dce280c7f52f1ad7936acc763294fa58269a2ca6a8e651"></a>uiOpenGLAttributeRobustness&#160;</td><td class="fielddoc"></td></tr>
 </table>
 
 </div>
@@ -4236,6 +4400,23 @@ Functions</h2></td></tr>
 
 </div>
 </div>
+<a id="a0fedd8a89b6c27c250676ccb94d7b719" name="a0fedd8a89b6c27c250676ccb94d7b719"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a0fedd8a89b6c27c250676ccb94d7b719">&#9670;&#160;</a></span>uiFreeOpenGLAttributes()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void uiFreeOpenGLAttributes </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="#a09b0877d48a11eddd3f0b493d70d4786">uiOpenGLAttributes</a> *</td>          <td class="paramname"><span class="paramname"><em>attribs</em></span></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="ac6caa4263d033230843050881e706e1d" name="ac6caa4263d033230843050881e706e1d"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ac6caa4263d033230843050881e706e1d">&#9670;&#160;</a></span>uiFreeOpenTypeFeatures()</h2>
 
@@ -4532,6 +4713,44 @@ Functions</h2></td></tr>
 
 </div>
 </div>
+<a id="a4cb46b99c511cf28ea1ebbf29e199ef5" name="a4cb46b99c511cf28ea1ebbf29e199ef5"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a4cb46b99c511cf28ea1ebbf29e199ef5">&#9670;&#160;</a></span>uiNewOpenGLArea()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="#accf70a878ae88b39895953183d0fb42d">uiOpenGLArea</a> * uiNewOpenGLArea </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structui_open_g_l_area_handler.html">uiOpenGLAreaHandler</a> *</td>          <td class="paramname"><span class="paramname"><em>ah</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="#a09b0877d48a11eddd3f0b493d70d4786">uiOpenGLAttributes</a> *</td>          <td class="paramname"><span class="paramname"><em>attribs</em></span>&#160;)</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a04d7f3c4ad605a38888e7e32746c5109" name="a04d7f3c4ad605a38888e7e32746c5109"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a04d7f3c4ad605a38888e7e32746c5109">&#9670;&#160;</a></span>uiNewOpenGLAttributes()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="#a09b0877d48a11eddd3f0b493d70d4786">uiOpenGLAttributes</a> * uiNewOpenGLAttributes </td>
+          <td>(</td>
+          <td class="paramname"><span class="paramname"><em></em></span></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="a0e108574bb3d330c2eb68f03b9d23325" name="a0e108574bb3d330c2eb68f03b9d23325"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a0e108574bb3d330c2eb68f03b9d23325">&#9670;&#160;</a></span>uiNewOpenTypeFeatures()</h2>
 
@@ -4711,6 +4930,142 @@ Functions</h2></td></tr>
           <td class="paramkey"></td>
           <td></td>
           <td class="paramtype">void *</td>          <td class="paramname"><span class="paramname"><em>data</em></span>&#160;)</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ac00d1c4dc3062742396de07e8dfd477d" name="ac00d1c4dc3062742396de07e8dfd477d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac00d1c4dc3062742396de07e8dfd477d">&#9670;&#160;</a></span>uiOpenGLAreaBeginUserWindowMove()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void uiOpenGLAreaBeginUserWindowMove </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="#accf70a878ae88b39895953183d0fb42d">uiOpenGLArea</a> *</td>          <td class="paramname"><span class="paramname"><em>a</em></span></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a328dc3ae963e421582cb58c7426148e8" name="a328dc3ae963e421582cb58c7426148e8"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a328dc3ae963e421582cb58c7426148e8">&#9670;&#160;</a></span>uiOpenGLAreaBeginUserWindowResize()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void uiOpenGLAreaBeginUserWindowResize </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="#accf70a878ae88b39895953183d0fb42d">uiOpenGLArea</a> *</td>          <td class="paramname"><span class="paramname"><em>a</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="#a0a56573f5bd7c430a54ac03419c4dd63">uiWindowResizeEdge</a></td>          <td class="paramname"><span class="paramname"><em>edge</em></span>&#160;)</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="aaddef23e53f148f7b8260884d678a56f" name="aaddef23e53f148f7b8260884d678a56f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aaddef23e53f148f7b8260884d678a56f">&#9670;&#160;</a></span>uiOpenGLAreaMakeCurrent()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void uiOpenGLAreaMakeCurrent </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="#accf70a878ae88b39895953183d0fb42d">uiOpenGLArea</a> *</td>          <td class="paramname"><span class="paramname"><em>a</em></span></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="abc9d980e0963c49b93b37e0f6983ba34" name="abc9d980e0963c49b93b37e0f6983ba34"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#abc9d980e0963c49b93b37e0f6983ba34">&#9670;&#160;</a></span>uiOpenGLAreaQueueRedrawAll()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void uiOpenGLAreaQueueRedrawAll </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="#accf70a878ae88b39895953183d0fb42d">uiOpenGLArea</a> *</td>          <td class="paramname"><span class="paramname"><em>a</em></span></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a4197cd9360c5a85485d7a67bfdf5216b" name="a4197cd9360c5a85485d7a67bfdf5216b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a4197cd9360c5a85485d7a67bfdf5216b">&#9670;&#160;</a></span>uiOpenGLAreaSetVSync()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void uiOpenGLAreaSetVSync </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="#accf70a878ae88b39895953183d0fb42d">uiOpenGLArea</a> *</td>          <td class="paramname"><span class="paramname"><em>a</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">int</td>          <td class="paramname"><span class="paramname"><em>v</em></span>&#160;)</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a50253eb09b5a0519cefee1467978aec5" name="a50253eb09b5a0519cefee1467978aec5"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a50253eb09b5a0519cefee1467978aec5">&#9670;&#160;</a></span>uiOpenGLAreaSwapBuffers()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void uiOpenGLAreaSwapBuffers </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="#accf70a878ae88b39895953183d0fb42d">uiOpenGLArea</a> *</td>          <td class="paramname"><span class="paramname"><em>a</em></span></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a5339fd2804001cc2ca18c9c1d224fea3" name="a5339fd2804001cc2ca18c9c1d224fea3"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a5339fd2804001cc2ca18c9c1d224fea3">&#9670;&#160;</a></span>uiOpenGLAttributesSetAttribute()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void uiOpenGLAttributesSetAttribute </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="#a09b0877d48a11eddd3f0b493d70d4786">uiOpenGLAttributes</a> *</td>          <td class="paramname"><span class="paramname"><em>attribs</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="#a8066051c8a58cb6e531dce280c7f52f1">uiOpenGLAttribute</a></td>          <td class="paramname"><span class="paramname"><em>attribute</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">int</td>          <td class="paramname"><span class="paramname"><em>value</em></span>&#160;)</td>
         </tr>
       </table>
 </div><div class="memdoc">

@@ -11,6 +11,6 @@ var searchData=
   ['model_8',['Model',['../structui_table_params.html#a9b039a5567e940a6164cc19440d1f2c8',1,'uiTableParams']]],
   ['modifier_9',['Modifier',['../structui_area_key_event.html#a7fd22af65b7f43a86a0896a0fa3f261b',1,'uiAreaKeyEvent']]],
   ['modifiers_10',['Modifiers',['../structui_area_mouse_event.html#acf5100f672939cd0059d1f0a4b679b2e',1,'uiAreaMouseEvent::Modifiers'],['../structui_area_key_event.html#aa49d8869605d2997799be31c848d99bc',1,'uiAreaKeyEvent::Modifiers']]],
-  ['mousecrossed_11',['MouseCrossed',['../structui_area_handler.html#ad42a9e391b46a6c084d4b2a35c9da859',1,'uiAreaHandler']]],
-  ['mouseevent_12',['MouseEvent',['../structui_area_handler.html#ad691a976e9ebc906ccdbf9ff0715ae3f',1,'uiAreaHandler']]]
+  ['mousecrossed_11',['MouseCrossed',['../structui_area_handler.html#ad42a9e391b46a6c084d4b2a35c9da859',1,'uiAreaHandler::MouseCrossed'],['../structui_open_g_l_area_handler.html#ab124024470d6ddb8828174527b6f5206',1,'uiOpenGLAreaHandler::MouseCrossed']]],
+  ['mouseevent_12',['MouseEvent',['../structui_area_handler.html#ad691a976e9ebc906ccdbf9ff0715ae3f',1,'uiAreaHandler::MouseEvent'],['../structui_open_g_l_area_handler.html#adecda91214b338470b241e998b0bb59d',1,'uiOpenGLAreaHandler::MouseEvent']]]
 ];
