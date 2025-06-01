@@ -129,7 +129,11 @@ const char *uiInit(uiInitOptions *o)
 	if (registerAreaClass(hDefaultIcon, hDefaultCursor) == 0)
 		return ieLastErr("registering uiArea window class");
 
-	registerScrollClass(hDefaultIcon, hDefaultCursor);
+	if (registerOpenGLAreaClass(hDefaultIcon, hDefaultCursor) == 0)
+		return ieLastErr("registering uiOpenGLArea window class");
+
+	if (registerScrollClass(hDefaultIcon, hDefaultCursor) == 0)
+		return ieLastErr("registering uiScroll window class");
 
 	if (extern_win_init(hDefaultIcon, hDefaultCursor)) {
 		return ieLastErr("Error");
