@@ -8,6 +8,7 @@ libui_sources += [
 	'windows/alloc.cpp',
 	'windows/area.cpp',
 	'windows/areadraw.cpp',
+	'windows/openglarea.cpp',
 	'windows/areaevents.cpp',
 	'windows/areascroll.cpp',
 	'windows/areautil.cpp',

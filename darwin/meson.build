@@ -4,6 +4,7 @@ libui_sources += [
 	'darwin/aat.m',
 	'darwin/alloc.m',
 	'darwin/area.m',
+	'darwin/areacommon.m',
 	'darwin/areaevents.m',
 	'darwin/attrstr.m',
 	'darwin/autolayout.m',
