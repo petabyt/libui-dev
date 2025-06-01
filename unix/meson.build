@@ -3,6 +3,7 @@
 libui_sources += [
 	'unix/alloc.c',
 	'unix/area.c',
+	'unix/areacommon.c',
 	'unix/attrstr.c',
 	'unix/box.c',
 	'unix/button.c',
