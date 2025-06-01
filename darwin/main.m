@@ -109,10 +109,14 @@ static BOOL stepsIsRunning;
 @end
 
 uiInitOptions uiprivOptions;
+//static dispatch_queue_t main_q;
 
 const char *uiInit(uiInitOptions *o)
 {
 	@autoreleasepool {
+		// Alternative queue for dispatch_async_f?
+		//main_q = dispatch_queue_create("com.example.myqueue", DISPATCH_QUEUE_SERIAL);
+
 		uiprivOptions = *o;
 		app = [[uiprivApplicationClass sharedApplication] retain];
 		// don't check for a NO return; something (launch services?) causes running from application bundles to always return NO when asking to change activation policy, even if the change is to the same activation policy!
