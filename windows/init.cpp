@@ -130,14 +130,13 @@ const char *uiInit(uiInitOptions *o)
 		return ieLastErr("registering uiArea window class");
 
 	if (registerOpenGLAreaClass(hDefaultIcon, hDefaultCursor) == 0)
-		return ieLastErr("registering uiOpenGLArea window class");
+		OutputDebugStringW(L"error registering uiOpenGLArea window class\n");
 
 	if (registerScrollClass(hDefaultIcon, hDefaultCursor) == 0)
 		return ieLastErr("registering uiScroll window class");
 
-	if (extern_win_init(hDefaultIcon, hDefaultCursor)) {
-		return ieLastErr("Error");
-	}
+	if (extern_win_init(hDefaultIcon, hDefaultCursor))
+		return ieLastErr("Error initializing extras");
 
 	if (registerMessageFilter() == 0)
 		return ieLastErr("registering libui message filter");
