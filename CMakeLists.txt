@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.15)
 project(ui)
 
-option(LIBUI_COMPILE_EXAMPLES "" ON)
-option(LIBUI_INCLUDE_INSTALL "" ON)
+option(LIBUI_COMPILE_EXAMPLES "Compile example programs and tests" OFF)
+option(LIBUI_INCLUDE_INSTALL "Include install() declaration" ON)
 option(LIBUI_COMPILE_GTK3 "Compile GTK3 on Linux" ON)
 option(LIBUI_COMPILE_QT5 "Compile Qt5 on Linux" OFF)
 
@@ -26,7 +26,7 @@ if(WIN32)
 
 	list(APPEND LIBS -luser32 -lkernel32 -lgdi32 -lcomctl32 -luxtheme -lmsimg32 -lcomdlg32 -ld2d1 -ldwrite -lole32 -loleaut32 -loleacc -lopengl32)
 	list(APPEND LIBS -lstdc++ -lgcc -static -lpthread -lssp -lurlmon -luuid)
-	list(APPEND LIBS -Wl,-subsystem,windows) # Disable cmd.exe window on open
+	#list(APPEND LIBS -Wl,-subsystem,windows) # Disable cmd.exe window on open
 
 	target_link_libraries(ui_win32 PUBLIC ${LIBS})
 	set(LIBUI_LIB ui_win32)
@@ -109,9 +109,23 @@ if(LIBUI_INCLUDE_INSTALL)
 endif()
 
 if(LIBUI_COMPILE_EXAMPLES)
-	add_executable(hello-world examples/hello-world/main.c)
-	target_link_libraries(hello-world LibUI::LibUI)
+	add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/subprojects/cmocka-1.1.5 ${CMAKE_CURRENT_BINARY_DIR}/cmocka)
+	
+	function(add_ex name)
+		if(WIN32)
+			add_executable(${name} ${ARGN} examples/resources.rc)
+		else()
+			add_executable(${name} ${ARGN})
+		endif()
+		target_link_libraries(${name} LibUI::LibUI cmocka -lm)
+	endfunction()
 
-	add_executable(controlgallery examples/controlgallery/main.c)
-	target_link_libraries(controlgallery LibUI::LibUI)
+	add_ex(hello-world examples/hello-world/main.c)
+	add_ex(controlgallery examples/controlgallery/main.c)
+	add_ex(histogram examples/histogram/main.c)
+	add_ex(drawtext examples/drawtext/main.c)
+	add_ex(datetime examples/datetime/main.c)
+	add_ex(window examples/window/main.c)
+	add_ex(test test/drawtests.c test/images.c test/main.c test/menus.c test/page1.c test/page2.c test/page3.c test/page4.c test/page5.c test/page6.c test/page7.c test/page7a.c test/page7b.c test/page7c.c test/page11.c test/page12.c test/page13.c test/page14.c test/page15.c test/page16.c test/page17.c test/spaced.c)
+	add_ex(unit test/unit/main.c test/unit/init.c test/unit/slider.c test/unit/spinbox.c test/unit/label.c test/unit/button.c test/unit/combobox.c test/unit/checkbox.c test/unit/radiobuttons.c test/unit/entry.c test/unit/menu.c test/unit/progressbar.c test/unit/drawmatrix.c test/unit/window.c)
 endif()
