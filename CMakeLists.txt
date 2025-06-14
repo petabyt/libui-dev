@@ -2,9 +2,10 @@ cmake_minimum_required(VERSION 3.15)
 project(ui)
 
 option(LIBUI_COMPILE_EXAMPLES "Compile example programs and tests" OFF)
-option(LIBUI_INCLUDE_INSTALL "Include install() declaration" ON)
+option(LIBUI_INCLUDE_INSTALL "Include install() declaration" OFF)
 option(LIBUI_COMPILE_GTK3 "Compile GTK3 on Linux" ON)
 option(LIBUI_COMPILE_QT5 "Compile Qt5 on Linux" OFF)
+option(LIBUI_COMPILE_GL "glArea support" ON)
 
 file(GLOB LIBUI_COMMON ABSOLUTE ${PROJECT_SOURCE_DIR} "common/*.c")
 list(FILTER LIBUI_COMMON EXCLUDE REGEX ".*OLD_table\\.c$")
@@ -50,6 +51,9 @@ elseif(UNIX)
 	if(LIBUI_COMPILE_GTK3)
 		file(GLOB LIBUI_GTK3 ABSOLUTE ${PROJECT_SOURCE_DIR} "unix/*.c")
 		list(FILTER LIBUI_GTK3 EXCLUDE REGEX ".*OLD_table\\.c$")
+		if(NOT LIBUI_COMPILE_GL)
+			list(FILTER LIBUI_GTK3 EXCLUDE REGEX ".*openglarea\\.c$")
+		endif()
 
 	    find_package(PkgConfig REQUIRED)
 	    pkg_check_modules(GTK3 IMPORTED_TARGET GLOBAL gtk+-3.0)
@@ -59,7 +63,8 @@ elseif(UNIX)
 			${CMAKE_CURRENT_SOURCE_DIR}/extras/label.c
 		)
 		target_include_directories(ui_gtk3 PRIVATE ${PROJECT_SOURCE_DIR}/unix ${PROJECT_SOURCE_DIR} PUBLIC ${PROJECT_SOURCE_DIR}/include)
-		target_link_libraries(ui_gtk3 PkgConfig::GTK3)
+		target_link_libraries(ui_gtk3 PkgConfig::GTK3
+		$<$<BOOL:${LIBUI_COMPILE_GL}>:-lwayland-client -lwayland-egl -lEGL>)
 		target_compile_options(ui_gtk3
 		    PRIVATE ${LIBUI_COMMON_FLAGS}
 		)
@@ -128,4 +133,14 @@ if(LIBUI_COMPILE_EXAMPLES)
 	add_ex(window examples/window/main.c)
 	add_ex(test test/drawtests.c test/images.c test/main.c test/menus.c test/page1.c test/page2.c test/page3.c test/page4.c test/page5.c test/page6.c test/page7.c test/page7a.c test/page7b.c test/page7c.c test/page11.c test/page12.c test/page13.c test/page14.c test/page15.c test/page16.c test/page17.c test/spaced.c)
 	add_ex(unit test/unit/main.c test/unit/init.c test/unit/slider.c test/unit/spinbox.c test/unit/label.c test/unit/button.c test/unit/combobox.c test/unit/checkbox.c test/unit/radiobuttons.c test/unit/entry.c test/unit/menu.c test/unit/progressbar.c test/unit/drawmatrix.c test/unit/window.c)
+
+	if(LIBUI_COMPILE_GL)
+		option(GLEW_X11 "X11 mode" ON)
+		option(GLEW_EGL "EGL mode" ON)
+		option(BUILD_SHARED_LIBS "install/link shared instead of static libs" OFF)
+		add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../glew/build/cmake ${CMAKE_CURRENT_BINARY_DIR}/glew)
+
+		add_executable(opengl examples/opengl/main.c)
+		target_link_libraries(opengl LibUI::LibUI glew_s -lm)
+	endif()
 endif()

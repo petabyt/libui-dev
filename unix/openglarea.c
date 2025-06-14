@@ -22,7 +22,6 @@
 
 #define EGL_ATTRIBUTE_LIST_SIZE 256
 
-// Global variable to store the uiOpenGLArea pointer
 static uiOpenGLArea *globalOpenGLArea = NULL;
 
 // Global Wayland subcompositor (shared across instances)
@@ -35,16 +34,13 @@ typedef EGLSurface (*PFNEGLCREATEPLATFORMWINDOWSURFACEEXTPROC)(EGLDisplay dpy, E
 static PFNEGLGETPLATFORMDISPLAYEXTPROC s_eglGetPlatformDisplay = NULL;
 static PFNEGLCREATEPLATFORMWINDOWSURFACEEXTPROC s_eglCreatePlatformWindowSurface = NULL;
 
-static pthread_once_t loaded_extensions = PTHREAD_ONCE_INIT;
-void load_extensions()
-{
+void load_extensions(void) {
     uiEGLSwapIntervalEXT = (eglSwapIntervalEXTFn)eglGetProcAddress("eglSwapIntervalEXT");
     s_eglGetPlatformDisplay = (PFNEGLGETPLATFORMDISPLAYEXTPROC)eglGetProcAddress("eglGetPlatformDisplayEXT");
     s_eglCreatePlatformWindowSurface = (PFNEGLCREATEPLATFORMWINDOWSURFACEEXTPROC)eglGetProcAddress("eglCreatePlatformWindowSurfaceEXT");
 }
 
-static int check_egl_extension(const char *extensions, const char *extName)
-{
+static int check_egl_extension(const char *extensions, const char *extName) {
     if (!extensions || !extName) return 0;
     const char *start = extensions;
     size_t len = strlen(extName);
@@ -91,7 +87,7 @@ struct uiOpenGLArea {
     GLXContext ctx;
     int initialized;
     int supportsSwapInterval;
-    // Additional members for EGL/Wayland support (added at the end as allowed)
+    
     EGLDisplay eglDisplay;
     EGLContext eglContext;
     EGLSurface eglSurface;
@@ -158,8 +154,7 @@ static void initContext(uiOpenGLArea *a)
         return;
     }
 
-    // Load extensions
-    pthread_once(&loaded_extensions, load_extensions);
+    load_extensions();
 
     // Check platform extensions
     const char *eglExtensions = eglQueryString(EGL_NO_DISPLAY, EGL_EXTENSIONS);
@@ -210,56 +205,23 @@ static void initContext(uiOpenGLArea *a)
         return;
     }
 
-    // Configure EGL attributes with fallbacks
-    // Adjusted array sizes to match the number of elements
-    EGLint config_attribs[][12] = {
-        { // Basic configuration: 11 elements + EGL_NONE = 12
-            EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
-            EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
-            EGL_RED_SIZE, 8,
-            EGL_GREEN_SIZE, 8,
-            EGL_BLUE_SIZE, 8,
-            EGL_ALPHA_SIZE, 0,
-            EGL_DEPTH_SIZE, 16,
-            EGL_STENCIL_SIZE, 0,
-            EGL_NONE
-        },
-        { // Minimal configuration: 9 elements + EGL_NONE = 10
-            EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
-            EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
-            EGL_RED_SIZE, 5,
-            EGL_GREEN_SIZE, 6,
-            EGL_BLUE_SIZE, 5,
-            EGL_DEPTH_SIZE, 8,
-            EGL_NONE
-        },
-        { // Fallback with no depth/stencil: 7 elements + EGL_NONE = 8
-            EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
-            EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
-            EGL_RED_SIZE, 5,
-            EGL_GREEN_SIZE, 5,
-            EGL_BLUE_SIZE, 5,
-            EGL_NONE
-        }
+    EGLint framebuffer_attribs[] = {
+        EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
+        EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
+        EGL_RED_SIZE, 8,
+        EGL_GREEN_SIZE, 8,
+        EGL_BLUE_SIZE, 8,
+        EGL_ALPHA_SIZE, 0,
+        EGL_DEPTH_SIZE, 16,
+        EGL_STENCIL_SIZE, 0,
+        EGL_NONE
     };
 
     EGLint num_configs = 0;
-    int config_index;
-    a->eglConfig = NULL; // Initialize to NULL
-    for (config_index = 0; config_index < 3; config_index++) {
-        if (!eglChooseConfig(a->eglDisplay, config_attribs[config_index], &a->eglConfig, 1, &num_configs) || num_configs == 0) {
-            fprintf(stderr, "[libui] initContext: Failed to choose EGL config (attempt %d)! Error: 0x%x\n", config_index + 1, eglGetError());
-            continue;
-        }
-        fprintf(stderr, "[libui] initContext: Successfully chose EGL config (attempt %d)\n", config_index + 1);
-        break;
-    }
-
-    if (num_configs == 0 || a->eglConfig == NULL) {
-        uiprivUserBug("Failed to choose a valid EGL configuration after all attempts! Error: 0x%x", eglGetError());
+    if (!eglChooseConfig(a->eglDisplay, framebuffer_attribs, &a->eglConfig, 1, &num_configs)) {
+        uiprivUserBug("eglChooseConfig: 0x%x", eglGetError());
         eglTerminate(a->eglDisplay);
         a->eglDisplay = EGL_NO_DISPLAY;
-        return;
     }
 
     // Create EGL context with fallback versions
@@ -288,8 +250,6 @@ static void initContext(uiOpenGLArea *a)
 
     int version_index;
     for (version_index = 0; version_index < 3; version_index++) {
-        fprintf(stderr, "[libui] initContext: Attempting OpenGL %d.%d context\n",
-                context_attribs[version_index][1], context_attribs[version_index][3]);
         a->eglContext = eglCreateContext(a->eglDisplay, a->eglConfig, EGL_NO_CONTEXT, context_attribs[version_index]);
         if (a->eglContext != EGL_NO_CONTEXT) {
             break;
@@ -312,20 +272,16 @@ static void update_subsurface_position(uiOpenGLArea *a)
 {
     if (!a->isWayland || !a->wl_subsurface) return;
 
-    // Get the toplevel window
     GtkWidget *toplevel = gtk_widget_get_toplevel(a->widget);
     if (!toplevel || !GTK_IS_WINDOW(toplevel)) return;
 
-    // Get the allocation of the OpenGL area widget relative to the toplevel
     GtkAllocation allocation;
     gtk_widget_get_allocation(a->widget, &allocation);
 
-    // Get the position of the widget relative to the toplevel window
     gint x = 0, y = 0;
 	gdk_window_get_origin (gtk_widget_get_window (a->widget), &x, &y);
     wl_subsurface_set_position(a->wl_subsurface, x, y);
 
-    // Commit the parent surface to apply changes
     struct wl_surface *parent_surface = gdk_wayland_window_get_wl_surface(gtk_widget_get_window(toplevel));
     if (parent_surface) {
         wl_surface_commit(parent_surface);
@@ -346,7 +302,6 @@ static void initSurface(uiOpenGLArea *a)
             return;
         }
 
-        // Get the parent (toplevel) surface
         GtkWidget *toplevel = gtk_widget_get_toplevel(a->widget);
         if (!toplevel || !GTK_IS_WINDOW(toplevel)) {
             uiprivUserBug("Failed to find toplevel window for Wayland subsurface!");
@@ -391,8 +346,6 @@ static void initSurface(uiOpenGLArea *a)
         GtkAllocation allocation;
         gtk_widget_get_allocation(a->widget, &allocation);
         gint scale = gdk_window_get_scale_factor(window);
-        fprintf(stderr, "[libui] initSurface: Allocation width=%d, height=%d, scale=%d\n",
-                allocation.width, allocation.height, scale);
 
         // Position the subsurface
         update_subsurface_position(a);
@@ -448,7 +401,6 @@ static void initSurface(uiOpenGLArea *a)
         }
         return;
     }
-    fprintf(stderr, "[libui] initSurface: EGL surface created, surface=%p\n", (void *)a->eglSurface);
 
     if (!eglMakeCurrent(a->eglDisplay, a->eglSurface, a->eglSurface, a->eglContext)) {
         uiprivUserBug("Failed to make EGL context current! Error: 0x%x", eglGetError());
@@ -487,47 +439,11 @@ static void on_map(GtkWidget *widget, gpointer data)
     if (!a->isWayland || !a->wl_surface) {
         return;
     }
-
-#if 0
-    // Restore the input region to the full surface area
-    struct wl_region *region = wl_compositor_create_region(gdk_wayland_display_get_wl_compositor(a->gdkDisplay));
-    if (!region) {
-        uiprivUserBug("Failed to create Wayland region for input on show!");
-        return;
-    }
-    GtkAllocation allocation;
-    gtk_widget_get_allocation(widget, &allocation);
-    wl_region_add(region, 0, 0, allocation.width, allocation.height);
-    wl_surface_set_input_region(a->wl_surface, region);
-    // Destroy the temporary region as it's no longer needed
-    wl_region_destroy(region);
-
-    // Restore the opaque region (optional optimization)
-    struct wl_region *opaque_region = wl_compositor_create_region(gdk_wayland_display_get_wl_compositor(a->gdkDisplay));
-    if (!opaque_region) {
-        uiprivUserBug("Failed to create Wayland region for opaque region on show!");
-        return;
-    }
-    wl_region_add(opaque_region, 0, 0, allocation.width, allocation.height);
-    wl_surface_set_opaque_region(a->wl_surface, opaque_region);
-    wl_region_destroy(opaque_region);
-
-    // Commit the surface to apply the regions
-    wl_surface_commit(a->wl_surface);
-
-    // Force a redraw to ensure the OpenGL content is rendered
-    gtk_widget_queue_draw(widget);
-    fprintf(stderr, "[libui] on_show: Showed Wayland surface for widget=%p, allocation: %dx%d\n",
-            (void *)widget, allocation.width, allocation.height);
-#endif
 }
 
 static void on_realize(GtkWidget *widget, gpointer data)
 {
     uiOpenGLArea *a = (uiOpenGLArea *)data;
-    fprintf(stderr, "[libui] on_realize: Widget=%p, realized=%d, visible=%d, has_window=%d\n",
-            (void *)widget, gtk_widget_get_realized(widget), gtk_widget_get_visible(widget),
-            gtk_widget_get_has_window(widget));
 
     // Ensure the subsurface is positioned correctly after the widget is fully realized
     if (a->isWayland && a->wl_subsurface) {
@@ -541,24 +457,7 @@ static void on_size_allocate(GtkWidget *widget, GtkAllocation *allocation, gpoin
     if (a->contextInitialized && a->isWayland && a->wl_egl_window) {
         gint scale = gdk_window_get_scale_factor(gtk_widget_get_window(widget));
         wl_egl_window_resize(a->wl_egl_window, allocation->width * scale, allocation->height * scale, 0, 0);
-        fprintf(stderr, "[libui] on_size_allocate: Resized Wayland EGL window to %dx%d (scale=%d)\n",
-                allocation->width, allocation->height, scale);
         update_subsurface_position(a);
-    }
-}
-
-static void on_window_configure(GtkWidget *window, GdkEventConfigure *event, gpointer data)
-{
-    uiOpenGLArea *a = (uiOpenGLArea *)data;
-    if (a->contextInitialized && a->isWayland && a->wl_egl_window) {
-        GtkAllocation allocation;
-        gtk_widget_get_allocation(a->areaWidget, &allocation);
-        gint scale = gdk_window_get_scale_factor(gtk_widget_get_window(a->areaWidget));
-        wl_egl_window_resize(a->wl_egl_window, allocation.width * scale, allocation.height * scale, 0, 0);
-        fprintf(stderr, "[libui] on_window_configure: Window resized, updated Wayland EGL window to %dx%d (scale=%d)\n",
-                allocation.width, allocation.height, scale);
-        update_subsurface_position(a);
-        gtk_widget_queue_draw(a->areaWidget); // Force redraw
     }
 }
 
@@ -568,7 +467,6 @@ static gboolean openGLAreaWidget_draw(GtkWidget *w, cairo_t *cr)
     double width, height;
 
     if (!a->contextInitialized) {
-        fprintf(stderr, "[libui] openGLAreaWidget_draw: Context not initialized, skipping draw\n");
         return FALSE;
     }
 
@@ -577,10 +475,8 @@ static gboolean openGLAreaWidget_draw(GtkWidget *w, cairo_t *cr)
 
     // Set viewport to match widget size
     glViewport(0, 0, (GLint)width, (GLint)height);
-//    fprintf(stderr, "[libui] openGLAreaWidget_draw: Set viewport to %.0fx%.0f\n", width, height);
 
     if (!a->initialized) {
-        fprintf(stderr, "[libui] openGLAreaWidget_draw: Initializing GL context\n");
         (*(a->ah->InitGL))(a->ah, a);
         a->initialized = 1;
     }
@@ -664,28 +560,20 @@ void uiOpenGLAreaSetVSync(uiOpenGLArea *a, int v)
 void uiOpenGLAreaMakeCurrent(uiOpenGLArea *a)
 {
     if (!a->contextInitialized || a->eglContext == EGL_NO_CONTEXT || a->eglSurface == EGL_NO_SURFACE) {
-        fprintf(stderr, "[libui] uiOpenGLAreaMakeCurrent: Context not ready (contextInitialized=%d, eglContext=%p, eglSurface=%p)\n",
-                a->contextInitialized, (void *)a->eglContext, (void *)a->eglSurface);
         return;
     }
     if (!eglMakeCurrent(a->eglDisplay, a->eglSurface, a->eglSurface, a->eglContext)) {
         uiprivUserBug("Failed to make EGL context current! Error: 0x%x", eglGetError());
-    } else {
-//        fprintf(stderr, "[libui] uiOpenGLAreaMakeCurrent: Context made current\n");
     }
 }
 
 void uiOpenGLAreaSwapBuffers(uiOpenGLArea *a)
 {
     if (!a->contextInitialized || a->eglSurface == EGL_NO_SURFACE) {
-        fprintf(stderr, "[libui] uiOpenGLAreaSwapBuffers: Surface not ready (contextInitialized=%d, eglSurface=%p)\n",
-                a->contextInitialized, (void *)a->eglSurface);
         return;
     }
     if (!eglSwapBuffers(a->eglDisplay, a->eglSurface)) {
         fprintf(stderr, "[libui] uiOpenGLAreaSwapBuffers: Failed to swap buffers! Error: 0x%x\n", eglGetError());
-    } else {
-//        fprintf(stderr, "[libui] uiOpenGLAreaSwapBuffers: Buffers swapped successfully\n");
     }
 }
 
@@ -701,22 +589,18 @@ void uiOpenGLAreaBeginUserWindowResize(uiOpenGLArea *a, uiWindowResizeEdge edge)
 
 static void on_hide(GtkWidget *widget, gpointer data)
 {
-    fprintf(stderr, "[libui] on_hide: Hid Wayland surface for widget=%p\n", (void *)widget);
     uiOpenGLArea *a = (uiOpenGLArea *)data;
     if (!a->isWayland || !a->wl_surface) {
         return;
     }
 
 	wl_surface_attach(a->wl_surface, NULL, 0, 0); // Detach buffer to stop rendering
-	//wl_surface_set_input_region(a->wl_surface, NULL); // Make non-interactive
 	wl_surface_set_opaque_region(a->wl_surface, NULL); // Remove opaque region hint
 	wl_surface_commit(a->wl_surface); // Apply changes
 }
 
-static void on_show(GtkWidget *widget, gpointer data)
-{
-    fprintf(stderr, "[libui] on_show: Hid Wayland surface for widget=%p\n", (void *)widget);
-    uiOpenGLArea *a = (uiOpenGLArea *)data;
+static void on_show(GtkWidget *widget, gpointer data) {
+    // ...
 }
 
 uiOpenGLArea *uiNewOpenGLArea(uiOpenGLAreaHandler *ah, uiOpenGLAttributes *attribs)

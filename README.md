@@ -28,7 +28,6 @@ This adds a bunch of experimental features and fixes:
 
 Potentially breaking changes:
 - [x] Moved include files to include/
-- [ ] Change `uiImage` API
 
 # Compiling
 ```
@@ -37,7 +36,7 @@ meson setup build
 meson compile -C build
 
 # Compile with cmake on Linux
-cmake -G Ninja -B build && cmake --build build
+cmake -DLIBUI_COMPILE_EXAMPLES=ON -G Ninja -B build && cmake --build build
 
 # Compile for MinGW from Linux
 cmake -DCMAKE_TOOLCHAIN_FILE=extras/mingw.cmake -G Ninja -B build && cmake --build build
