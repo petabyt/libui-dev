@@ -226,7 +226,7 @@ int uiprivTableProgress(uiTable *t, int item, int subitem, int modelColumn, LONG
 		if (SetTimer(t->hwnd, (UINT_PTR) t, 30, NULL) == 0)
 			logLastError(L"SetTimer()");
 	if (stopTimer)
-		if (KillTimer(t->hwnd, (UINT_PTR) (&t)) == 0)
+		if (KillTimer(t->hwnd, (UINT_PTR) t) == 0)
 			logLastError(L"KillTimer()");
 
 	return progress;
