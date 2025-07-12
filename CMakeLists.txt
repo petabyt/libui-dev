@@ -14,6 +14,9 @@ set(LIBUI_COMMON_FLAGS -fvisibility=hidden -fdiagnostics-color=always -D_FILE_OF
 
 if(WIN32)
 	file(GLOB LIBUI_WIN ABSOLUTE ${PROJECT_SOURCE_DIR} "windows/*.cpp")
+	if(NOT LIBUI_COMPILE_GL)
+		list(FILTER LIBUI_GTK3 EXCLUDE REGEX ".*openglarea\\.cpp$")
+	endif()
 
 	add_library(ui_win32 STATIC ${LIBUI_COMMON} ${LIBUI_WIN}
 		${CMAKE_CURRENT_SOURCE_DIR}/extras/favicon/win.cpp
@@ -34,6 +37,9 @@ if(WIN32)
 elseif(APPLE)
 	file(GLOB LIBUI_DARWIN ABSOLUTE ${PROJECT_SOURCE_DIR} "darwin/*.m")
 	list(FILTER LIBUI_DARWIN EXCLUDE REGEX ".*OLD_table\\.m$")
+	if(NOT LIBUI_COMPILE_GL)
+		list(FILTER LIBUI_GTK3 EXCLUDE REGEX ".*openglarea\\.m$")
+	endif()
 
 	add_library(ui_darwin STATIC ${LIBUI_COMMON} ${LIBUI_DARWIN}
 		${CMAKE_CURRENT_SOURCE_DIR}/extras/favicon/darwin.c
@@ -64,7 +70,8 @@ elseif(UNIX)
 		)
 		target_include_directories(ui_gtk3 PRIVATE ${PROJECT_SOURCE_DIR}/unix ${PROJECT_SOURCE_DIR} PUBLIC ${PROJECT_SOURCE_DIR}/include)
 		target_link_libraries(ui_gtk3 PkgConfig::GTK3
-		$<$<BOOL:${LIBUI_COMPILE_GL}>:-lwayland-client -lwayland-egl -lEGL>)
+			$<$<BOOL:${LIBUI_COMPILE_GL}>:-lwayland-client -lwayland-egl -lEGL>
+		)
 		target_compile_options(ui_gtk3
 		    PRIVATE ${LIBUI_COMMON_FLAGS}
 		)
@@ -131,6 +138,7 @@ if(LIBUI_COMPILE_EXAMPLES)
 	add_ex(drawtext examples/drawtext/main.c)
 	add_ex(datetime examples/datetime/main.c)
 	add_ex(window examples/window/main.c)
+	add_ex(draw examples/draw/main.c)
 	add_ex(test test/drawtests.c test/images.c test/main.c test/menus.c test/page1.c test/page2.c test/page3.c test/page4.c test/page5.c test/page6.c test/page7.c test/page7a.c test/page7b.c test/page7c.c test/page11.c test/page12.c test/page13.c test/page14.c test/page15.c test/page16.c test/page17.c test/spaced.c)
 	add_ex(unit test/unit/main.c test/unit/init.c test/unit/slider.c test/unit/spinbox.c test/unit/label.c test/unit/button.c test/unit/combobox.c test/unit/checkbox.c test/unit/radiobuttons.c test/unit/entry.c test/unit/menu.c test/unit/progressbar.c test/unit/drawmatrix.c test/unit/window.c)
 

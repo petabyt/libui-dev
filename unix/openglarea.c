@@ -22,8 +22,6 @@
 
 #define EGL_ATTRIBUTE_LIST_SIZE 256
 
-static uiOpenGLArea *globalOpenGLArea = NULL;
-
 // Global Wayland subcompositor (shared across instances)
 static struct wl_subcompositor *global_subcompositor = NULL;
 
@@ -33,12 +31,6 @@ typedef EGLDisplay (*PFNEGLGETPLATFORMDISPLAYEXTPROC)(EGLenum platform, void *na
 typedef EGLSurface (*PFNEGLCREATEPLATFORMWINDOWSURFACEEXTPROC)(EGLDisplay dpy, EGLConfig config, void *native_window, const EGLint *attrib_list);
 static PFNEGLGETPLATFORMDISPLAYEXTPROC s_eglGetPlatformDisplay = NULL;
 static PFNEGLCREATEPLATFORMWINDOWSURFACEEXTPROC s_eglCreatePlatformWindowSurface = NULL;
-
-void load_extensions(void) {
-    uiEGLSwapIntervalEXT = (eglSwapIntervalEXTFn)eglGetProcAddress("eglSwapIntervalEXT");
-    s_eglGetPlatformDisplay = (PFNEGLGETPLATFORMDISPLAYEXTPROC)eglGetProcAddress("eglGetPlatformDisplayEXT");
-    s_eglCreatePlatformWindowSurface = (PFNEGLCREATEPLATFORMWINDOWSURFACEEXTPROC)eglGetProcAddress("eglCreatePlatformWindowSurfaceEXT");
-}
 
 static int check_egl_extension(const char *extensions, const char *extName) {
     if (!extensions || !extName) return 0;
@@ -66,6 +58,7 @@ struct openGLAreaWidgetClass {
 };
 
 struct uiOpenGLArea {
+//    struct uiArea a;
     uiUnixControl c;
     GtkWidget *widget;
     GtkWidget *swidget;
@@ -80,6 +73,7 @@ struct uiOpenGLArea {
     int scrollHeight;
     uiprivClickCounter *cc;
     GdkEventButton *dragevent;
+
     uiOpenGLAttributes *attribs;
     GdkDisplay *gdkDisplay;
     Display *display;
@@ -87,7 +81,7 @@ struct uiOpenGLArea {
     GLXContext ctx;
     int initialized;
     int supportsSwapInterval;
-    
+
     EGLDisplay eglDisplay;
     EGLContext eglContext;
     EGLSurface eglSurface;
@@ -97,6 +91,7 @@ struct uiOpenGLArea {
     gboolean contextInitialized;
     struct wl_surface *wl_surface;      // Added for Wayland subsurface
     struct wl_subsurface *wl_subsurface; // Added for Wayland subsurface
+    int scale;
 };
 
 G_DEFINE_TYPE(openGLAreaWidget, openGLAreaWidget, GTK_TYPE_DRAWING_AREA)
@@ -154,7 +149,9 @@ static void initContext(uiOpenGLArea *a)
         return;
     }
 
-    load_extensions();
+    uiEGLSwapIntervalEXT = (eglSwapIntervalEXTFn)eglGetProcAddress("eglSwapIntervalEXT");
+    s_eglGetPlatformDisplay = (PFNEGLGETPLATFORMDISPLAYEXTPROC)eglGetProcAddress("eglGetPlatformDisplayEXT");
+    s_eglCreatePlatformWindowSurface = (PFNEGLCREATEPLATFORMWINDOWSURFACEEXTPROC)eglGetProcAddress("eglCreatePlatformWindowSurfaceEXT");
 
     // Check platform extensions
     const char *eglExtensions = eglQueryString(EGL_NO_DISPLAY, EGL_EXTENSIONS);
@@ -346,6 +343,7 @@ static void initSurface(uiOpenGLArea *a)
         GtkAllocation allocation;
         gtk_widget_get_allocation(a->widget, &allocation);
         gint scale = gdk_window_get_scale_factor(window);
+        a->scale = scale;
 
         // Position the subsurface
         update_subsurface_position(a);
@@ -473,8 +471,14 @@ static gboolean openGLAreaWidget_draw(GtkWidget *w, cairo_t *cr)
     uiprivLoadAreaSize((uiArea *)a, &width, &height);
     uiOpenGLAreaMakeCurrent(a);
 
+    // Daniel doesn't understand what uiprivLoadAreaSize does and added this patch in because it works
+    if (a->isWayland && a->wl_egl_window) {
+        width *= (double)a->scale;
+        height *= (double)a->scale;
+    }
+
     // Set viewport to match widget size
-    glViewport(0, 0, (GLint)width, (GLint)height);
+    //glViewport(0, 0, (GLint)width, (GLint)height);
 
     if (!a->initialized) {
         (*(a->ah->InitGL))(a->ah, a);
@@ -537,7 +541,6 @@ static void uiOpenGLAreaDestroy(uiControl *c)
     }
     uiprivFree(a->attribs);
     g_object_unref(a->widget);
-    globalOpenGLArea = NULL;
     uiFreeControl(uiControl(a));
 }
 
@@ -599,10 +602,6 @@ static void on_hide(GtkWidget *widget, gpointer data)
 	wl_surface_commit(a->wl_surface); // Apply changes
 }
 
-static void on_show(GtkWidget *widget, gpointer data) {
-    // ...
-}
-
 uiOpenGLArea *uiNewOpenGLArea(uiOpenGLAreaHandler *ah, uiOpenGLAttributes *attribs)
 {
     uiOpenGLArea *a;
@@ -624,8 +623,6 @@ uiOpenGLArea *uiNewOpenGLArea(uiOpenGLAreaHandler *ah, uiOpenGLAttributes *attri
     gtk_widget_set_double_buffered(a->areaWidget, FALSE);
     gtk_widget_set_has_window(a->areaWidget, TRUE);
     gtk_widget_set_visible(a->areaWidget, TRUE);
-
-    globalOpenGLArea = a;
 
     g_signal_connect(a->areaWidget, "map", G_CALLBACK(on_map), a);
     g_signal_connect(a->areaWidget, "realize", G_CALLBACK(on_realize), a);

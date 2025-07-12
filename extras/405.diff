@@ -51010,10 +51010,10 @@ index 000000000..1fff59c95
 +	uiUninit();
 +	return 0;
 +}
-diff --git a/ui.h b/ui.h
+diff --git a/include/ui.h b/include/ui.h
 index 40aea9498..f16f3f603 100644
---- a/ui.h
-+++ b/ui.h
+--- a/include/ui.h
++++ b/include/ui.h
 @@ -1458,6 +1458,78 @@ _UI_EXTERN void uiTableAppendButtonColumn(uiTable *t,
  // uiNewTable() creates a new uiTable with the specified parameters.
  _UI_EXTERN uiTable *uiNewTable(uiTableParams *params);

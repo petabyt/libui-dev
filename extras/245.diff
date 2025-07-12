@@ -1,0 +1,3212 @@
+diff --git a/common/control.c b/common/control.c
+index 98cb94aac..ded247b7c 100644
+--- a/common/control.c
++++ b/common/control.c
+@@ -4,6 +4,8 @@
+ 
+ void uiControlDestroy(uiControl *c)
+ {
++	if (c->dragDest != NULL)
++		uiprivControlDestroyDragDestination(c);
+ 	(*(c->Destroy))(c);
+ }
+ 
+@@ -67,6 +69,7 @@ uiControl *uiAllocControl(size_t size, uint32_t OSsig, uint32_t typesig, const c
+ 	c->Signature = uiprivControlSignature;
+ 	c->OSSignature = OSsig;
+ 	c->TypeSignature = typesig;
++	c->dragDest = NULL;
+ 	return c;
+ }
+ 
+diff --git a/common/dragdestination.c b/common/dragdestination.c
+new file mode 100644
+index 000000000..1db64afa2
+--- /dev/null
++++ b/common/dragdestination.c
+@@ -0,0 +1,77 @@
++#include "../ui.h"
++#include "uipriv.h"
++
++uiDragOperation defaultOnEnter(uiDragDestination *dd, uiDragContext *dc, void *data)
++{
++	return uiDragOperationNone;
++}
++
++uiDragOperation defaultOnMove(uiDragDestination *dd, uiDragContext *dc, void *data)
++{
++	return uiDragDestinationLastDragOperation(dd);
++}
++
++void defaultOnExit(uiDragDestination *dd, void *data)
++{
++	// do nothing
++}
++
++int defaultOnDrop(uiDragDestination *dd, uiDragContext *dc, void *senderData)
++{
++	return 0;
++}
++
++void uiDragDestinationOnEnter(uiDragDestination *dd, uiDragOperation (*f)(uiDragDestination *, uiDragContext *, void *), void *data)
++{
++	dd->onEnter = f;
++	dd->onEnterData = data;
++}
++
++void uiDragDestinationOnMove(uiDragDestination *dd, uiDragOperation (*f)(uiDragDestination *, uiDragContext *, void *), void *data)
++{
++	dd->onMove = f;
++	dd->onMoveData = data;
++}
++
++void uiDragDestinationOnExit(uiDragDestination *dd, void (*f)(uiDragDestination *, void *), void *data)
++{
++	dd->onExit = f;
++	dd->onExitData = data;
++}
++
++void uiDragDestinationOnDrop(uiDragDestination *dd, int (*f)(uiDragDestination *, uiDragContext *, void *), void *data)
++{
++	dd->onDrop = f;
++	dd->onDropData = data;
++}
++
++void uiDragDestinationSetAcceptTypes(uiDragDestination* dd, int typeMask)
++{
++	dd->typeMask = typeMask;
++}
++
++int uiDragDestinationAcceptTypes(uiDragDestination* dd)
++{
++	return dd->typeMask;
++}
++
++uiDragOperation uiDragDestinationLastDragOperation(uiDragDestination* dd)
++{
++	return dd->op;
++}
++
++uiDragDestination* uiNewDragDestination(void)
++{
++	uiDragDestination *dd;
++
++	dd = uiprivNew(uiDragDestination);
++	dd->typeMask = 0;
++
++	uiDragDestinationOnEnter(dd, defaultOnEnter, NULL);
++	uiDragDestinationOnMove(dd, defaultOnMove, NULL);
++	uiDragDestinationOnExit(dd, defaultOnExit, NULL);
++	uiDragDestinationOnDrop(dd, defaultOnDrop, NULL);
++
++	return dd;
++}
++
+diff --git a/common/meson.build b/common/meson.build
+index dfc9c3100..eb4668247 100644
+--- a/common/meson.build
++++ b/common/meson.build
+@@ -7,6 +7,7 @@ libui_sources += [
+ 	'common/areaevents.c',
+ 	'common/control.c',
+ 	'common/debug.c',
++	'common/dragdestination.c',
+ 	'common/matrix.c',
+ 	'common/opentype.c',
+ 	'common/shouldquit.c',
+diff --git a/common/uipriv.h b/common/uipriv.h
+index 6441ada52..256d9e83c 100644
+--- a/common/uipriv.h
++++ b/common/uipriv.h
+@@ -62,6 +62,26 @@ extern void uiprivFallbackTransformSize(uiDrawMatrix *, double *, double *);
+ // OS-specific text.* files
+ extern int uiprivStricmp(const char *a, const char *b);
+ 
++// dragdestination.c
++struct uiDragDestination {
++	uiControl *control;
++	uiDragOperation (*onEnter)(uiDragDestination *, uiDragContext *, void *);
++	uiDragOperation (*onMove)(uiDragDestination *, uiDragContext *, void *);
++	void (*onExit)(uiDragDestination *, void *);
++	int (*onDrop)(uiDragDestination *, uiDragContext *, void *);
++	void *onEnterData;
++	void *onMoveData;
++	void *onExitData;
++	void *onDropData;
++
++	uiDragOperation op;
++	int typeMask;
++	void *priv;
++};
++
++// control.c
++extern void uiprivControlDestroyDragDestination(uiControl *c);
++
+ #ifdef __cplusplus
+ }
+ #endif
+diff --git a/darwin/box.m b/darwin/box.m
+index ee9df345a..6251d5c80 100644
+--- a/darwin/box.m
++++ b/darwin/box.m
+@@ -11,7 +11,7 @@ @interface boxChild : NSObject
+ - (NSView *)view;
+ @end
+ 
+-@interface boxView : NSView {
++@interface boxView : NSView<NSDraggingDestination> {
+ 	uiBox *b;
+ 	NSMutableArray *children;
+ 	BOOL vertical;
+@@ -62,6 +62,8 @@ - (NSView *)view
+ 
+ @implementation boxView
+ 
++uiDarwinDragDestinationMethods(b)
++
+ - (id)initWithVertical:(BOOL)vert b:(uiBox *)bb
+ {
+ 	self = [super initWithFrame:NSZeroRect];
+diff --git a/darwin/button.m b/darwin/button.m
+index 55c0bbb3b..d795da053 100644
+--- a/darwin/button.m
++++ b/darwin/button.m
+@@ -8,7 +8,7 @@
+ 	void *onClickedData;
+ };
+ 
+-@interface uiprivButton : NSButton {
++@interface uiprivButton : NSButton<NSDraggingDestination> {
+ 	uiButton *button;
+ }
+ - (id)initWithFrame:(NSRect)frame uiButton:(uiButton *)b;
+@@ -17,6 +17,8 @@ - (IBAction)onClicked:(id)sender;
+ 
+ @implementation uiprivButton
+ 
++uiDarwinDragDestinationMethods(button)
++
+ - (id)initWithFrame:(NSRect)frame uiButton:(uiButton *)b
+ {
+ 	self = [super initWithFrame:frame];
+diff --git a/darwin/checkbox.m b/darwin/checkbox.m
+index b6c8cdf4b..384212e24 100644
+--- a/darwin/checkbox.m
++++ b/darwin/checkbox.m
+@@ -8,7 +8,7 @@
+ 	void *onToggledData;
+ };
+ 
+-@interface uiprivCheckbox : NSButton {
++@interface uiprivCheckbox : NSButton<NSDraggingDestination> {
+ 	uiCheckbox *checkbox;
+ }
+ - (id)initWithFrame:(NSRect)frame uiCheckbox:(uiCheckbox *)c;
+@@ -17,6 +17,8 @@ - (IBAction)onToggled:(id)sender;
+ 
+ @implementation uiprivCheckbox
+ 
++uiDarwinDragDestinationMethods(checkbox)
++
+ - (id)initWithFrame:(NSRect)frame uiCheckbox:(uiCheckbox *)c
+ {
+ 	self = [super initWithFrame:frame];
+diff --git a/darwin/colorbutton.m b/darwin/colorbutton.m
+index f2bee7756..f1e086e0d 100644
+--- a/darwin/colorbutton.m
++++ b/darwin/colorbutton.m
+@@ -3,7 +3,7 @@
+ 
+ // TODO no intrinsic height?
+ 
+-@interface colorButton : NSColorWell {
++@interface colorButton : NSColorWell<NSDraggingDestination> {
+ 	uiColorButton *libui_b;
+ 	BOOL libui_changing;
+ 	BOOL libui_setting;
+@@ -26,6 +26,8 @@ - (void)libuiSetColor:(double)r g:(double)g b:(double)b a:(double)a;
+ 
+ @implementation colorButton
+ 
++uiDarwinDragDestinationMethods(libui_b)
++
+ - (id)initWithFrame:(NSRect)frame libuiColorButton:(uiColorButton *)b
+ {
+ 	self = [super initWithFrame:frame];
+diff --git a/darwin/combobox.m b/darwin/combobox.m
+index 1c0aaf4f5..231d51d07 100644
+--- a/darwin/combobox.m
++++ b/darwin/combobox.m
+@@ -12,7 +12,7 @@
+ 	void *onSelectedData;
+ };
+ 
+-@interface uiprivCombobox : NSPopUpButton {
++@interface uiprivCombobox : NSPopUpButton<NSDraggingDestination> {
+ 	uiCombobox *combobox;
+ }
+ - (id)initWithFrame:(NSRect)frame uiCombobox:(uiCombobox *)c;
+@@ -21,6 +21,8 @@ - (IBAction)onSelected:(id)sender;
+ 
+ @implementation uiprivCombobox
+ 
++uiDarwinDragDestinationMethods(combobox)
++
+ - (id)initWithFrame:(NSRect)frame uiCombobox:(uiCombobox *)c
+ {
+ 	self = [super initWithFrame:frame pullsDown:NO];
+diff --git a/darwin/control.m b/darwin/control.m
+index 9eaf47a27..51543b42b 100644
+--- a/darwin/control.m
++++ b/darwin/control.m
+@@ -82,3 +82,34 @@ void uiDarwinNotifyVisibilityChanged(uiDarwinControl *c)
+ 	if (parent != NULL)
+ 		uiDarwinControlChildVisibilityChanged(uiDarwinControl(parent));
+ }
++
++void uiprivControlDestroyDragDestination(uiControl *c)
++{
++	[(id)uiControlHandle(c) unregisterDraggedTypes];
++	uiprivFree(c->dragDest);
++	c->dragDest = NULL;
++}
++
++void uiControlRegisterDragDestination(uiControl *c, uiDragDestination *dd)
++{
++	NSMutableArray *types;
++	if (c->dragDest != NULL)
++		uiprivControlDestroyDragDestination(c);
++
++	if (dd == NULL)
++		return;
++
++	c->dragDest = dd;
++
++	types = [NSMutableArray new];
++	if (dd->typeMask & uiDragTypeURIs) {
++		[types addObject:NSFilenamesPboardType];
++	}
++	if (dd->typeMask & uiDragTypeText) {
++		[types addObject:NSStringPboardType];
++	}
++
++	[(id)uiControlHandle(c) registerForDraggedTypes:types];
++	[types release];
++}
++
+diff --git a/darwin/datetimepicker.m b/darwin/datetimepicker.m
+index c721be7cc..8d5b6ae5d 100644
+--- a/darwin/datetimepicker.m
++++ b/darwin/datetimepicker.m
+@@ -11,7 +11,7 @@
+ 
+ // TODO see if target-action works here or not; I forgot what cody271@ originally said
+ // the primary advantage of the delegate is the ability to reject changes, but libui doesn't support that yet — we should consider that API option as well
+-@interface uiprivDatePicker : NSDatePicker<NSDatePickerCellDelegate> {
++@interface uiprivDatePicker : NSDatePicker<NSDatePickerCellDelegate, NSDraggingDestination> {
+ 	uiDateTimePicker *picker;
+ }
+ - (id)initWithElements:(NSDatePickerElementFlags)elements uiDateTimePicker:(uiDateTimePicker *)d;
+@@ -21,6 +21,8 @@ - (void)doTimer:(NSTimer *)timer;
+ 
+ @implementation uiprivDatePicker
+ 
++uiDarwinDragDestinationMethods(picker)
++
+ - (id)initWithElements:(NSDatePickerElementFlags)elements uiDateTimePicker:(uiDateTimePicker *)d
+ {
+ 	self = [super initWithFrame:NSZeroRect];
+diff --git a/darwin/dragcontext.m b/darwin/dragcontext.m
+new file mode 100644
+index 000000000..7a4bc1ed4
+--- /dev/null
++++ b/darwin/dragcontext.m
+@@ -0,0 +1,81 @@
++#import "uipriv_darwin.h"
++
++void uiDragContextPosition(uiDragContext *dc, int *x, int *y)
++{
++	NSPoint pt = [dc->info draggingLocation];
++	*x = pt.x;
++	*y = dc->view.frame.size.height - pt.y;
++}
++
++int uiDragContextDragTypes(uiDragContext *dc)
++{
++	int types = 0;
++	NSPasteboard *pboard = [dc->info draggingPasteboard];
++
++	if ([[pboard types] containsObject:NSStringPboardType])
++		types |= uiDragTypeText;
++	if ([[pboard types] containsObject:NSFilenamesPboardType])
++		types |= uiDragTypeURIs;
++
++	return types;
++}
++
++int uiDragContextDragOperations(uiDragContext *dc)
++{
++	int ops = uiDragOperationNone;
++	NSDragOperation mask = [dc->info draggingSourceOperationMask];
++
++	if (mask & NSDragOperationCopy)
++		ops |= uiDragOperationCopy;
++	if (mask & NSDragOperationLink)
++		ops |= uiDragOperationLink;
++	if (mask & NSDragOperationMove)
++		ops |= uiDragOperationMove;
++
++	return ops;
++}
++
++uiDragData* uiDragContextDragData(uiDragContext *dc, uiDragType type)
++{
++	uiDragData *d = NULL;
++	NSPasteboard *pboard = [dc->info draggingPasteboard];
++
++	switch (type) {
++	case uiDragTypeURIs:
++		{
++			if ([[pboard types] containsObject:NSFilenamesPboardType]) {
++				int i;
++				NSArray *urls = [pboard propertyListForType:NSFilenamesPboardType];
++
++				// TODO inform about failure?
++				if (urls == nil)
++					return NULL;
++
++				d = uiprivNew(uiDragData);
++				d->type = uiDragTypeURIs;
++				d->data.URIs.numURIs = [urls count];
++				d->data.URIs.URIs = uiprivAlloc(d->data.URIs.numURIs * sizeof(*d->data.URIs.URIs), "uiDrag    DropData->data.URIs.URIs");
++				for (i = 0; i < d->data.URIs.numURIs; ++i)
++					d->data.URIs.URIs[i] = uiDarwinNSStringToText(urls[i]);
++			}
++		}
++		break;
++	case uiDragTypeText:
++		{
++			if ([[pboard types] containsObject:NSStringPboardType]) {
++				NSString *text = [pboard stringForType:NSStringPboardType];
++
++				// TODO inform about failure?
++				if (text == nil)
++					return NULL;
++
++				d = uiprivNew(uiDragData);
++				d->type = uiDragTypeText;
++				d->data.text = uiDarwinNSStringToText(text);
++			}
++		}
++		break;
++	}
++	return d;
++}
++
+diff --git a/darwin/dragdata.m b/darwin/dragdata.m
+new file mode 100644
+index 000000000..985686ec5
+--- /dev/null
++++ b/darwin/dragdata.m
+@@ -0,0 +1,20 @@
++#import "uipriv_darwin.h"
++
++void uiFreeDragData(uiDragData *d)
++{
++	int i;
++
++	switch (d->type) {
++		case uiDragTypeText:
++			uiFreeText(d->data.text);
++			break;
++		case uiDragTypeURIs:
++			for (i = 0; i < d->data.URIs.numURIs; ++i)
++				uiFreeText(d->data.URIs.URIs[i]);
++			if (d->data.URIs.URIs != NULL)
++				uiprivFree(d->data.URIs.URIs);
++			break;
++	}
++	uiprivFree(d);
++}
++
+diff --git a/darwin/dragdestination.m b/darwin/dragdestination.m
+new file mode 100644
+index 000000000..0c14856fd
+--- /dev/null
++++ b/darwin/dragdestination.m
+@@ -0,0 +1,17 @@
++#import "uipriv_darwin.h"
++
++NSDragOperation uiprivDragOperationToNSDragOperation(uiDragOperation op)
++{
++	switch (op) {
++		case uiDragOperationNone:
++			return NSDragOperationNone;
++		case uiDragOperationCopy:
++			return NSDragOperationCopy;
++		case uiDragOperationLink:
++			return NSDragOperationLink;
++		case uiDragOperationMove:
++			return NSDragOperationMove;
++	}
++	return NSDragOperationNone;
++}
++
+diff --git a/darwin/editablecombo.m b/darwin/editablecombo.m
+index 99a9a4885..fd83c6490 100644
+--- a/darwin/editablecombo.m
++++ b/darwin/editablecombo.m
+@@ -10,7 +10,7 @@
+ // NSComboBoxes have no intrinsic width; we'll use the default Interface Builder width for them.
+ #define comboboxWidth 96
+ 
+-@interface uiprivEditableCombobox : NSComboBox<NSComboBoxDelegate>
++@interface uiprivEditableCombobox : NSComboBox<NSComboBoxDelegate, NSDraggingDestination>
+ - (id)initWithFrame:(NSRect)frame uiEditableCombobox:(uiEditableCombobox *)cb;
+ - (void)controlTextDidChange:(NSNotification *)note;
+ - (void)comboBoxSelectionDidChange:(NSNotification *)note;
+@@ -27,6 +27,8 @@ @implementation uiprivEditableCombobox {
+ 	uiEditableCombobox *combobox;
+ }
+ 
++uiDarwinDragDestinationMethods(combobox)
++
+ - (NSSize)intrinsicContentSize
+ {
+ 	NSSize s;
+diff --git a/darwin/entry.m b/darwin/entry.m
+index 7b2358e55..ebff49cda 100644
+--- a/darwin/entry.m
++++ b/darwin/entry.m
+@@ -4,11 +4,31 @@
+ // Text fields for entering text have no intrinsic width; we'll use the default Interface Builder width for them.
+ #define textfieldWidth 96
+ 
+-@interface uiprivNSTextField : NSTextField
++struct uiEntry {
++	uiDarwinControl c;
++	NSTextField *textfield;
++	void (*onChanged)(uiEntry *, void *);
++	void *onChangedData;
++};
++
++@interface uiprivNSTextField : NSTextField<NSDraggingDestination> {
++	uiEntry *entry;
++}
++- (id)initWithFrame:(NSRect)frame uiEntry:(uiEntry *)e;
+ @end
+ 
+ @implementation uiprivNSTextField
+ 
++uiDarwinDragDestinationMethods(entry)
++
++- (id)initWithFrame:(NSRect)frame uiEntry:(uiEntry *)e
++{
++	self = [super initWithFrame:frame];
++	if (self)
++		self->entry = e;
++	return self;
++}
++
+ - (NSSize)intrinsicContentSize
+ {
+ 	NSSize s;
+@@ -21,11 +41,24 @@ - (NSSize)intrinsicContentSize
+ @end
+ 
+ // TODO does this have one on its own?
+-@interface uiprivNSSecureTextField : NSSecureTextField
++@interface uiprivNSSecureTextField : NSSecureTextField<NSDraggingDestination> {
++	uiEntry *entry;
++}
++- (id)initWithFrame:(NSRect)frame uiEntry:(uiEntry *)e;
+ @end
+ 
+ @implementation uiprivNSSecureTextField
+ 
++uiDarwinDragDestinationMethods(entry)
++
++- (id)initWithFrame:(NSRect)frame uiEntry:(uiEntry *)e
++{
++	self = [super initWithFrame:frame];
++	if (self)
++		self->entry = e;
++	return self;
++}
++
+ - (NSSize)intrinsicContentSize
+ {
+ 	NSSize s;
+@@ -38,11 +71,24 @@ - (NSSize)intrinsicContentSize
+ @end
+ 
+ // TODO does this have one on its own?
+-@interface uiprivNSSearchField : NSSearchField
++@interface uiprivNSSearchField : NSSearchField<NSDraggingDestination> {
++	uiEntry *entry;
++}
++- (id)initWithFrame:(NSRect)frame uiEntry:(uiEntry *)e;
+ @end
+ 
+ @implementation uiprivNSSearchField
+ 
++uiDarwinDragDestinationMethods(entry)
++
++- (id)initWithFrame:(NSRect)frame uiEntry:(uiEntry *)e
++{
++	self = [super initWithFrame:frame];
++	if (self)
++		self->entry = e;
++	return self;
++}
++
+ - (NSSize)intrinsicContentSize
+ {
+ 	NSSize s;
+@@ -54,13 +100,6 @@ - (NSSize)intrinsicContentSize
+ 
+ @end
+ 
+-struct uiEntry {
+-	uiDarwinControl c;
+-	NSTextField *textfield;
+-	void (*onChanged)(uiEntry *, void *);
+-	void *onChangedData;
+-};
+-
+ static BOOL isSearchField(NSTextField *tf)
+ {
+ 	return [tf isKindOfClass:[NSSearchField class]];
+@@ -155,20 +194,14 @@ static void defaultOnChanged(uiEntry *e, void *data)
+ 	// do nothing
+ }
+ 
+-static NSTextField *realNewEditableTextField(Class class)
++NSTextField *uiprivNewEditableTextField(void)
+ {
+ 	NSTextField *tf;
+-
+-	tf = [[class alloc] initWithFrame:NSZeroRect];
++	tf = [[uiprivNSTextField alloc] initWithFrame:NSZeroRect];
+ 	uiprivNSTextFieldSetStyleEntry(tf);
+ 	return tf;
+ }
+ 
+-NSTextField *uiprivNewEditableTextField(void)
+-{
+-	return realNewEditableTextField([uiprivNSTextField class]);
+-}
+-
+ static uiEntry *finishNewEntry(Class class)
+ {
+ 	uiEntry *e;
+@@ -176,7 +209,8 @@ static void defaultOnChanged(uiEntry *e, void *data)
+ 
+ 	uiDarwinNewControl(uiEntry, e);
+ 
+-	e->textfield = realNewEditableTextField(class);
++	e->textfield = [[class alloc] initWithFrame:NSZeroRect uiEntry:e];
++	uiprivNSTextFieldSetStyleEntry(e->textfield);
+ 
+ 	delegate = [[uiprivEntryDelegate alloc] initWithEntry:e];
+ 	if (isSearchField(e->textfield)) {
+diff --git a/darwin/fontbutton.m b/darwin/fontbutton.m
+index 8d406ab44..22be0ff21 100644
+--- a/darwin/fontbutton.m
++++ b/darwin/fontbutton.m
+@@ -2,7 +2,7 @@
+ #import "uipriv_darwin.h"
+ #import "attrstr.h"
+ 
+-@interface uiprivFontButton : NSButton {
++@interface uiprivFontButton : NSButton<NSDraggingDestination> {
+ 	uiFontButton *libui_b;
+ 	NSFont *libui_font;
+ }
+@@ -27,6 +27,8 @@ - (void)getfontdesc:(uiFontDescriptor *)uidesc;
+ 
+ @implementation uiprivFontButton
+ 
++uiDarwinDragDestinationMethods(libui_b)
++
+ - (id)initWithFrame:(NSRect)frame libuiFontButton:(uiFontButton *)b
+ {
+ 	self = [super initWithFrame:frame];
+diff --git a/darwin/form.m b/darwin/form.m
+index 9e77184b7..ec490327d 100644
+--- a/darwin/form.m
++++ b/darwin/form.m
+@@ -19,7 +19,7 @@ - (void)onDestroy;
+ - (NSView *)view;
+ @end
+ 
+-@interface formView : NSView {
++@interface formView : NSView<NSDraggingDestination> {
+ 	uiForm *f;
+ 	NSMutableArray *children;
+ 	int padded;
+@@ -117,6 +117,8 @@ - (NSView *)view
+ 
+ @implementation formView
+ 
++uiDarwinDragDestinationMethods(f)
++
+ - (id)initWithF:(uiForm *)ff
+ {
+ 	self = [super initWithFrame:NSZeroRect];
+diff --git a/darwin/grid.m b/darwin/grid.m
+index cc40a5700..2a4e306a3 100644
+--- a/darwin/grid.m
++++ b/darwin/grid.m
+@@ -28,7 +28,7 @@ - (void)onDestroy;
+ - (NSView *)view;
+ @end
+ 
+-@interface gridView : NSView {
++@interface gridView : NSView<NSDraggingDestination> {
+ 	uiGrid *g;
+ 	NSMutableArray *children;
+ 	int padded;
+@@ -164,6 +164,8 @@ - (NSView *)view
+ 
+ @implementation gridView
+ 
++uiDarwinDragDestinationMethods(g)
++
+ - (id)initWithG:(uiGrid *)gg
+ {
+ 	self = [super initWithFrame:NSZeroRect];
+diff --git a/darwin/group.m b/darwin/group.m
+index 2cfcdf473..19177c91a 100644
+--- a/darwin/group.m
++++ b/darwin/group.m
+@@ -13,6 +13,32 @@
+ 	NSLayoutPriority vertHuggingPri;
+ };
+ 
++@interface uiprivGroupBox : NSBox<NSDraggingDestination> {
++	uiGroup *group;
++}
++- (id)initWithFrame:(NSRect)frame uiGroup:(uiGroup *)g;
++@end
++
++@implementation uiprivGroupBox
++
++uiDarwinDragDestinationMethods(group)
++
++- (id)initWithFrame:(NSRect)frame uiGroup:(uiGroup *)g
++{
++	self = [super initWithFrame:frame];
++	if (self) {
++		self->group = g;
++
++		[self setBoxType:NSBoxPrimary];
++		[self setBorderType:NSLineBorder];
++		[self setTransparent:NO];
++		[self setTitlePosition:NSAtTop];
++	}
++	return self;
++}
++
++@end
++
+ static void removeConstraints(uiGroup *g)
+ {
+ 	// set to contentView instead of to the box itself, otherwise we get clipping underneath the label
+@@ -177,12 +203,8 @@ void uiGroupSetMargined(uiGroup *g, int margined)
+ 
+ 	uiDarwinNewControl(uiGroup, g);
+ 
+-	g->box = [[NSBox alloc] initWithFrame:NSZeroRect];
+-	[g->box setTitle:uiprivToNSString(title)];
+-	[g->box setBoxType:NSBoxPrimary];
+-	[g->box setBorderType:NSLineBorder];
+-	[g->box setTransparent:NO];
+-	[g->box setTitlePosition:NSAtTop];
++	g->box = [[uiprivGroupBox alloc] initWithFrame:NSZeroRect uiGroup:g];
++	uiGroupSetTitle(g, title);
+ 	// we can't use uiDarwinSetControlFont() because the selector is different
+ 	[g->box setTitleFont:[NSFont systemFontOfSize:[NSFont systemFontSizeForControlSize:NSSmallControlSize]]];
+ 
+diff --git a/darwin/label.m b/darwin/label.m
+index 62f370365..e7e75aca8 100644
+--- a/darwin/label.m
++++ b/darwin/label.m
+@@ -6,6 +6,27 @@
+ 	NSTextField *textfield;
+ };
+ 
++@interface uiprivNSTextFieldLabel : NSTextField<NSDraggingDestination> {
++	uiLabel *textfield;
++}
++- (id)initWithFrame:(NSRect)frame uiLabel:(uiLabel *)l;
++@end
++
++@implementation uiprivNSTextFieldLabel
++
++uiDarwinDragDestinationMethods(textfield)
++
++- (id)initWithFrame:(NSRect)frame uiLabel:(uiLabel *)l
++{
++	self = [super initWithFrame:frame];
++	if (self) {
++		self->textfield = l;
++	}
++	return self;
++}
++
++@end
++
+ uiDarwinControlAllDefaults(uiLabel, textfield)
+ 
+ char *uiLabelText(uiLabel *l)
+@@ -18,16 +39,22 @@ void uiLabelSetText(uiLabel *l, const char *text)
+ 	[l->textfield setStringValue:uiprivToNSString(text)];
+ }
+ 
++static void labelSetStyle(NSTextField *tf)
++{
++	[tf setEditable:NO];
++	[tf setSelectable:NO];
++	[tf setDrawsBackground:NO];
++	uiprivNSTextFieldSetStyleLabel(tf);
++}
++
+ NSTextField *uiprivNewLabel(NSString *str)
+ {
+ 	NSTextField *tf;
+ 
+ 	tf = [[NSTextField alloc] initWithFrame:NSZeroRect];
+ 	[tf setStringValue:str];
+-	[tf setEditable:NO];
+-	[tf setSelectable:NO];
+-	[tf setDrawsBackground:NO];
+-	uiprivNSTextFieldSetStyleLabel(tf);
++	labelSetStyle(tf);
++
+ 	return tf;
+ }
+ 
+@@ -37,7 +64,9 @@ void uiLabelSetText(uiLabel *l, const char *text)
+ 
+ 	uiDarwinNewControl(uiLabel, l);
+ 
+-	l->textfield = uiprivNewLabel(uiprivToNSString(text));
++	l->textfield = [[uiprivNSTextFieldLabel alloc] initWithFrame:NSZeroRect uiLabel:l];
++	[l->textfield setStringValue:uiprivToNSString(text)];
++	labelSetStyle(l->textfield);
+ 
+ 	return l;
+ }
+diff --git a/darwin/meson.build b/darwin/meson.build
+index f19e00f9e..45f9d29d5 100644
+--- a/darwin/meson.build
++++ b/darwin/meson.build
+@@ -15,6 +15,9 @@ libui_sources += [
+ 	'darwin/control.m',
+ 	'darwin/datetimepicker.m',
+ 	'darwin/debug.m',
++	'darwin/dragcontext.m',
++	'darwin/dragdata.m',
++	'darwin/dragdestination.m',
+ 	'darwin/draw.m',
+ 	'darwin/drawtext.m',
+ 	'darwin/editablecombo.m',
+diff --git a/darwin/multilineentry.m b/darwin/multilineentry.m
+index 202c69a18..23188ec04 100644
+--- a/darwin/multilineentry.m
++++ b/darwin/multilineentry.m
+@@ -4,7 +4,7 @@
+ // NSTextView has no intrinsic content size by default, which wreaks havoc on a pure-Auto Layout system
+ // we'll have to take over to get it to work
+ // see also http://stackoverflow.com/questions/24210153/nstextview-not-properly-resizing-with-auto-layout and http://stackoverflow.com/questions/11237622/using-autolayout-with-expanding-nstextviews
+-@interface intrinsicSizeTextView : NSTextView {
++@interface intrinsicSizeTextView : NSTextView<NSDraggingDestination> {
+ 	uiMultilineEntry *libui_e;
+ }
+ - (id)initWithFrame:(NSRect)r e:(uiMultilineEntry *)e;
+@@ -22,6 +22,8 @@ - (id)initWithFrame:(NSRect)r e:(uiMultilineEntry *)e;
+ 
+ @implementation intrinsicSizeTextView
+ 
++uiDarwinDragDestinationMethods(libui_e)
++
+ - (id)initWithFrame:(NSRect)r e:(uiMultilineEntry *)e
+ {
+ 	self = [super initWithFrame:r];
+diff --git a/darwin/progressbar.m b/darwin/progressbar.m
+index 1f5390ffc..168546615 100644
+--- a/darwin/progressbar.m
++++ b/darwin/progressbar.m
+@@ -4,10 +4,28 @@
+ // NSProgressIndicator has no intrinsic width by default; use the default width in Interface Builder
+ #define progressIndicatorWidth 100
+ 
+-@interface intrinsicWidthNSProgressIndicator : NSProgressIndicator
++struct uiProgressBar {
++	uiDarwinControl c;
++	NSProgressIndicator *pi;
++};
++
++@interface uiprivNSProgressIndicator : NSProgressIndicator<NSDraggingDestination> {
++	uiProgressBar *progressBar;
++}
++- (id)initWithFrame:(NSRect)frame uiProgressBar:(uiProgressBar *)p;
+ @end
+ 
+-@implementation intrinsicWidthNSProgressIndicator
++@implementation uiprivNSProgressIndicator
++
++uiDarwinDragDestinationMethods(progressBar)
++
++- (id)initWithFrame:(NSRect)frame uiProgressBar:(uiProgressBar *)p
++{
++	self = [super initWithFrame:frame];
++	if (self)
++		self->progressBar = p;
++	return self;
++}
+ 
+ - (NSSize)intrinsicContentSize
+ {
+@@ -20,11 +38,6 @@ - (NSSize)intrinsicContentSize
+ 
+ @end
+ 
+-struct uiProgressBar {
+-	uiDarwinControl c;
+-	NSProgressIndicator *pi;
+-};
+-
+ uiDarwinControlAllDefaults(uiProgressBar, pi)
+ 
+ int uiProgressBarValue(uiProgressBar *p)
+@@ -68,7 +81,7 @@ void uiProgressBarSetValue(uiProgressBar *p, int value)
+ 
+ 	uiDarwinNewControl(uiProgressBar, p);
+ 
+-	p->pi = [[intrinsicWidthNSProgressIndicator alloc] initWithFrame:NSZeroRect];
++	p->pi = [[uiprivNSProgressIndicator alloc] initWithFrame:NSZeroRect uiProgressBar:p];
+ 	[p->pi setControlSize:NSRegularControlSize];
+ 	[p->pi setBezeled:YES];
+ 	[p->pi setStyle:NSProgressIndicatorBarStyle];
+diff --git a/darwin/radiobuttons.m b/darwin/radiobuttons.m
+index c7b037174..9b8067518 100644
+--- a/darwin/radiobuttons.m
++++ b/darwin/radiobuttons.m
+@@ -9,10 +9,10 @@
+ 
+ // LONGTERM 6 units of spacing between buttons, as suggested by Interface Builder?
+ 
+-@interface radioButtonsDelegate : NSObject {
+-	uiRadioButtons *libui_r;
++@interface uiprivNSViewRadioButtons : NSView<NSDraggingDestination> {
++	uiRadioButtons *radioButtons;
+ }
+-- (id)initWithR:(uiRadioButtons *)r;
++- (id)initWithFrame:(NSRect)frame uiRadioButtons:(uiRadioButtons *)r;
+ - (IBAction)onClicked:(id)sender;
+ @end
+ 
+@@ -22,24 +22,25 @@ - (IBAction)onClicked:(id)sender;
+ 	NSMutableArray *buttons;
+ 	NSMutableArray *constraints;
+ 	NSLayoutConstraint *lastv;
+-	radioButtonsDelegate *delegate;
+ 	void (*onSelected)(uiRadioButtons *, void *);
+ 	void *onSelectedData;
+ };
+ 
+-@implementation radioButtonsDelegate
++@implementation uiprivNSViewRadioButtons
+ 
+-- (id)initWithR:(uiRadioButtons *)r
++uiDarwinDragDestinationMethods(radioButtons)
++
++- (id)initWithFrame:(NSRect)frame uiRadioButtons:(uiRadioButtons *)r
+ {
+-	self = [super init];
++	self = [super initWithFrame:frame];
+ 	if (self)
+-		self->libui_r = r;
++		self->radioButtons = r;
+ 	return self;
+ }
+ 
+ - (IBAction)onClicked:(id)sender
+ {
+-	uiRadioButtons *r = self->libui_r;
++	uiRadioButtons *r = self->radioButtons;
+ 
+ 	(*(r->onSelected))(r, r->onSelectedData);
+ }
+@@ -69,8 +70,6 @@ static void uiRadioButtonsDestroy(uiControl *c)
+ 		[b removeFromSuperview];
+ 	}
+ 	[r->buttons release];
+-	// destroy the delegate
+-	[r->delegate release];
+ 	// and destroy ourselves
+ 	[r->view release];
+ 	uiFreeControl(uiControl(r));
+@@ -95,7 +94,7 @@ void uiRadioButtonsAppend(uiRadioButtons *r, const char *text)
+ 	uiDarwinSetControlFont(b, NSRegularControlSize);
+ 	[b setTranslatesAutoresizingMaskIntoConstraints:NO];
+ 
+-	[b setTarget:r->delegate];
++	[b setTarget:r->view];
+ 	[b setAction:@selector(onClicked:)];
+ 
+ 	[r->buttons addObject:b];
+@@ -195,12 +194,10 @@ void uiRadioButtonsOnSelected(uiRadioButtons *r, void (*f)(uiRadioButtons *, voi
+ 
+ 	uiDarwinNewControl(uiRadioButtons, r);
+ 
+-	r->view = [[NSView alloc] initWithFrame:NSZeroRect];
++	r->view = [[uiprivNSViewRadioButtons alloc] initWithFrame:NSZeroRect uiRadioButtons:r];
+ 	r->buttons = [NSMutableArray new];
+ 	r->constraints = [NSMutableArray new];
+ 
+-	r->delegate = [[radioButtonsDelegate alloc] initWithR:r];
+-
+ 	uiRadioButtonsOnSelected(r, defaultOnSelected, NULL);
+ 
+ 	return r;
+diff --git a/darwin/separator.m b/darwin/separator.m
+index a37a376e7..b4da53cbe 100644
+--- a/darwin/separator.m
++++ b/darwin/separator.m
+@@ -10,6 +10,32 @@
+ 	NSBox *box;
+ };
+ 
++@interface uiprivNSBoxSeparator : NSBox<NSDraggingDestination> {
++	uiSeparator *separator;
++}
++- (id)initWithFrame:(NSRect)frame uiSeparator:(uiSeparator *)s;
++@end
++
++@implementation uiprivNSBoxSeparator
++
++uiDarwinDragDestinationMethods(separator)
++
++- (id)initWithFrame:(NSRect)frame uiSeparator:(uiSeparator *)s
++{
++	self = [super initWithFrame:frame];
++	if (self) {
++		self->separator = s;
++
++		[self setBoxType:NSBoxSeparator];
++		[self setBorderType:NSGrooveBorder];
++		[self setTransparent:NO];
++		[self setTitlePosition:NSNoTitle];
++	}
++	return self;
++}
++
++@end
++
+ uiDarwinControlAllDefaults(uiSeparator, box)
+ 
+ uiSeparator *uiNewHorizontalSeparator(void)
+@@ -19,11 +45,7 @@
+ 	uiDarwinNewControl(uiSeparator, s);
+ 
+ 	// make the initial width >= initial height to force horizontal
+-	s->box = [[NSBox alloc] initWithFrame:NSMakeRect(0, 0, 100, 1)];
+-	[s->box setBoxType:NSBoxSeparator];
+-	[s->box setBorderType:NSGrooveBorder];
+-	[s->box setTransparent:NO];
+-	[s->box setTitlePosition:NSNoTitle];
++	s->box = [[uiprivNSBoxSeparator alloc] initWithFrame:NSMakeRect(0, 0, 100, 1) uiSeparator:s];
+ 
+ 	return s;
+ }
+@@ -35,11 +57,7 @@
+ 	uiDarwinNewControl(uiSeparator, s);
+ 
+ 	// make the initial height >= initial width to force vertical
+-	s->box = [[NSBox alloc] initWithFrame:NSMakeRect(0, 0, 1, 100)];
+-	[s->box setBoxType:NSBoxSeparator];
+-	[s->box setBorderType:NSGrooveBorder];
+-	[s->box setTransparent:NO];
+-	[s->box setTitlePosition:NSNoTitle];
++	s->box = [[uiprivNSBoxSeparator alloc] initWithFrame:NSMakeRect(0, 0, 1, 100) uiSeparator:s];
+ 
+ 	return s;
+ }
+diff --git a/darwin/slider.m b/darwin/slider.m
+index 23465bda6..bfd6952f9 100644
+--- a/darwin/slider.m
++++ b/darwin/slider.m
+@@ -17,7 +17,7 @@
+ 
+ static void _uiSliderUpdateToolTip(uiSlider *s);
+ 
+-@interface uiprivSlider : NSSlider {
++@interface uiprivSlider : NSSlider<NSDraggingDestination> {
+ 	uiSlider *slider;
+ }
+ - (id)initWithFrame:(NSRect)frame uiSlider:(uiSlider *)s;
+@@ -26,6 +26,8 @@ - (IBAction)onChanged:(id)sender;
+ 
+ @implementation uiprivSlider
+ 
++uiDarwinDragDestinationMethods(slider)
++
+ - (id)initWithFrame:(NSRect)frame uiSlider:(uiSlider *)s
+ {
+ 	self = [super initWithFrame:frame];
+diff --git a/darwin/spinbox.m b/darwin/spinbox.m
+index a22ecf132..3e821d2a4 100644
+--- a/darwin/spinbox.m
++++ b/darwin/spinbox.m
+@@ -1,7 +1,7 @@
+ // 14 august 2015
+ #import "uipriv_darwin.h"
+ 
+-@interface libui_spinbox : NSView<NSTextFieldDelegate> {
++@interface libui_spinbox : NSView<NSTextFieldDelegate, NSDraggingDestination> {
+ 	NSTextField *tf;
+ 	NSNumberFormatter *formatter;
+ 	NSStepper *stepper;
+@@ -42,6 +42,8 @@ static CGFloat stepperYDelta(void)
+ 
+ @implementation libui_spinbox
+ 
++uiDarwinDragDestinationMethods(spinbox)
++
+ - (id)initWithFrame:(NSRect)r spinbox:(uiSpinbox *)sb
+ {
+ 	self = [super initWithFrame:r];
+diff --git a/darwin/tab.m b/darwin/tab.m
+index 28c38318f..c5e9a7003 100644
+--- a/darwin/tab.m
++++ b/darwin/tab.m
+@@ -28,6 +28,26 @@ - (void)setMargined:(int)m;
+ 	NSLayoutPriority vertHuggingPri;
+ };
+ 
++@interface uiprivTabView : NSTabView<NSDraggingDestination> {
++	uiTab *tab;
++}
++- (id)initWithFrame:(NSRect)frame uiTab:(uiTab *)t;
++@end
++
++@implementation uiprivTabView
++
++uiDarwinDragDestinationMethods(tab)
++
++- (id)initWithFrame:(NSRect)frame uiTab:(uiTab *)t
++{
++	self = [super initWithFrame:frame];
++	if (self)
++		self->tab = t;
++	return self;
++}
++
++@end
++
+ @implementation tabPage
+ 
+ - (id)initWithView:(NSView *)v pageID:(NSObject *)o
+@@ -278,7 +298,7 @@ void uiTabSetMargined(uiTab *t, int n, int margined)
+ 
+ 	uiDarwinNewControl(uiTab, t);
+ 
+-	t->tabview = [[NSTabView alloc] initWithFrame:NSZeroRect];
++	t->tabview = [[uiprivTabView alloc] initWithFrame:NSZeroRect uiTab:t];
+ 	// also good for NSTabView (same selector and everything)
+ 	uiDarwinSetControlFont((NSControl *) (t->tabview), NSRegularControlSize);
+ 
+diff --git a/darwin/table.m b/darwin/table.m
+index 5e1e58171..1285a2bc2 100644
+--- a/darwin/table.m
++++ b/darwin/table.m
+@@ -12,7 +12,7 @@ - (NSIndexSet *)tableView:(NSTableView *)tv selectionIndexesForProposedSelection
+ @end
+ 
+ // TODO we really need to clean up the sharing of the table and model variables...
+-@interface uiprivTableView : NSTableView {
++@interface uiprivTableView : NSTableView<NSDraggingDestination> {
+ 	uiTable *uiprivT;
+ 	uiTableModel *uiprivM;
+ 	NSTableHeaderView *headerViewRef;
+@@ -30,6 +30,8 @@ @implementation uiprivTableView
+ 
+ @synthesize selectionMode;
+ 
++uiDarwinDragDestinationMethods(uiprivT)
++
+ - (id)initWithFrame:(NSRect)r uiprivT:(uiTable *)t uiprivM:(uiTableModel *)m
+ {
+ 	self = [super initWithFrame:r];
+diff --git a/darwin/uipriv_darwin.h b/darwin/uipriv_darwin.h
+index 6d79a454d..0cc022d42 100644
+--- a/darwin/uipriv_darwin.h
++++ b/darwin/uipriv_darwin.h
+@@ -78,7 +78,7 @@ extern void uiprivDisableAutocorrect(NSTextView *);
+ extern NSTextField *uiprivNewEditableTextField(void);
+ 
+ // window.m
+-@interface uiprivNSWindow : NSWindow<NSWindowDelegate> {
++@interface uiprivNSWindow : NSWindow<NSWindowDelegate, NSDraggingDestination> {
+ 	uiWindow *window;
+ }
+ - (BOOL)windowShouldClose:(id)sender;
+@@ -174,3 +174,12 @@ extern void uiprivLoadUndocumented(void);
+ 
+ // event.m
+ extern BOOL uiprivSendKeyboardEditEvents(uiprivApplicationClass *app, NSEvent *e);
++
++// dragdestination.m
++extern NSDragOperation uiprivDragOperationToNSDragOperation(uiDragOperation op);
++
++// dragcontext.m
++struct uiDragContext {
++	id<NSDraggingInfo> info;
++	NSView *view;
++};
+diff --git a/darwin/window.m b/darwin/window.m
+index 107321b9f..a81729e71 100644
+--- a/darwin/window.m
++++ b/darwin/window.m
+@@ -27,6 +27,8 @@
+ 
+ @implementation uiprivNSWindow
+ 
++uiDarwinDragDestinationMethods(window)
++
+ - (void)uiprivDoMove:(NSEvent *)initialEvent
+ {
+ 	uiprivDoManualMove(self, initialEvent);
+diff --git a/examples/drag-drop/main.c b/examples/drag-drop/main.c
+new file mode 100644
+index 000000000..19d5a9bb9
+--- /dev/null
++++ b/examples/drag-drop/main.c
+@@ -0,0 +1,239 @@
++#include <stdio.h>
++#include <ui.h>
++
++static uiMultilineEntry *eventLog;
++static uiMultilineEntry *dragData;
++static uiDragDestination *dragDest;
++static uiLabel *dragPos;
++
++static uiCheckbox *contextText;
++static uiCheckbox *contextURIs;
++
++static uiCheckbox *opNone;
++static uiCheckbox *opCopy;
++static uiCheckbox *opLink;
++static uiCheckbox *opMove;
++
++static int moved;
++static uiDragOperation dragOp;
++
++static void updateDragContextDragTypes(uiDragContext *dc)
++{
++	int types;
++
++	types = uiDragContextDragTypes(dc);
++	uiCheckboxSetChecked(contextText, !!(types & uiDragTypeText));
++	uiCheckboxSetChecked(contextURIs, !!(types & uiDragTypeURIs));
++}
++
++static void updateDragContextDragOperations(uiDragContext *dc)
++{
++	int ops;
++
++	ops = uiDragContextDragOperations(dc);
++	uiCheckboxSetChecked(opNone, !!(ops == uiDragOperationNone));
++	uiCheckboxSetChecked(opCopy, !!(ops & uiDragOperationCopy));
++	uiCheckboxSetChecked(opLink, !!(ops & uiDragOperationLink));
++	uiCheckboxSetChecked(opMove, !!(ops & uiDragOperationMove));
++}
++
++static void updateDragContextPosition(uiDragContext *dc)
++{
++	char str[256];
++	int x;
++	int y;
++
++	uiDragContextPosition(dc, &x, &y);
++	sprintf(str, "%d:%d", x, y);
++	uiLabelSetText(dragPos, str);
++}
++
++static void updateDragData(uiDragDestination *dd, uiDragContext *dc)
++{
++	int i;
++	int types;
++	int accepted;
++	uiDragData *data;
++
++	uiMultilineEntrySetText(dragData, "");
++
++	types = uiDragContextDragTypes(dc);
++	accepted = uiDragDestinationAcceptTypes(dd);
++
++	if (types & accepted & uiDragTypeText) {
++		data = uiDragContextDragData(dc, uiDragTypeText);
++		if (data != NULL) {
++			uiMultilineEntryAppend(dragData, "text:\n");
++			uiMultilineEntryAppend(dragData, data->data.text);
++			uiMultilineEntryAppend(dragData, "\n");
++			uiFreeDragData(data);
++		}
++	}
++
++	if (types & accepted & uiDragTypeURIs) {
++		data = uiDragContextDragData(dc, uiDragTypeURIs);
++		if (data != NULL) {
++			uiMultilineEntryAppend(dragData, "URIs:\n");
++			for (i = 0; i < data->data.URIs.numURIs; ++i) {
++				uiMultilineEntryAppend(dragData, data->data.URIs.URIs[i]);
++				uiMultilineEntryAppend(dragData, "\n");
++			}
++			uiFreeDragData(data);
++		}
++	}
++}
++
++static void updateDragContext(uiDragDestination *dd, uiDragContext *dc)
++{
++	updateDragContextDragTypes(dc);
++	updateDragContextDragOperations(dc);
++	updateDragContextPosition(dc);
++	updateDragData(dd, dc);
++}
++
++static uiDragOperation onEnter(uiDragDestination *dd, uiDragContext *dc, void *senderData)
++{
++	if (dragOp != uiDragOperationNone && !(uiDragContextDragOperations(dc) & dragOp)) {
++		uiMultilineEntryAppend(eventLog, "Operation not supported by your file manager.\n");
++		uiMultilineEntryAppend(eventLog, "Please use a different file manager to complete this test.\n\n");
++	}
++
++	updateDragContext(dd, dc);
++	uiMultilineEntryAppend(eventLog, "Enter\n");
++	return dragOp;
++}
++
++static uiDragOperation onMove(uiDragDestination *dd, uiDragContext *dc, void *senderData)
++{
++	if (moved == 0) {
++		moved = 1;
++		uiMultilineEntryAppend(eventLog, "Move\n");
++	}
++	updateDragContext(dd, dc);
++	return uiDragDestinationLastDragOperation(dd);
++}
++
++static void onExit(uiDragDestination *dd, void *senderData)
++{
++	moved = 0;
++	uiMultilineEntryAppend(eventLog, "Leave\n");
++}
++
++static int onDrop(uiDragDestination *dd, uiDragContext *dc, void *senderData)
++{
++	moved = 0;
++	uiMultilineEntryAppend(eventLog, "Drop\n");
++	updateDragContext(dd, dc);
++	return 1;
++}
++
++int onClosing(uiWindow *w, void *data)
++{
++	uiQuit();
++	return 1;
++}
++
++int main(void)
++{
++	uiBox *vbox;
++	uiBox *hbox;
++	uiLabel *label;
++	uiGroup *group;
++	uiForm *form;
++	uiInitOptions o = {0};
++	const char *err;
++	uiWindow *w;
++
++	err = uiInit(&o);
++	if (err != NULL) {
++		fprintf(stderr, "Error initializing libui-ng: %s\n", err);
++		uiFreeInitError(err);
++		return 1;
++	}
++
++	w = uiNewWindow("Drag & Drop", 800, 600, 0);
++	uiWindowOnClosing(w, onClosing, NULL);
++
++	moved = 0;
++	dragOp = uiDragOperationCopy;
++
++	vbox = uiNewVerticalBox();
++	uiBoxSetPadded(vbox, 1);
++	uiWindowSetChild(w, uiControl(vbox));
++
++	label = uiNewLabel("Drag & Drop Zone\nDrag & Drop Zone\nDrag & Drop Zone");
++	uiBoxAppend(vbox, uiControl(label), 0);
++
++	uiBoxAppend(vbox, uiControl(uiNewHorizontalSeparator()), 0);
++
++	// uiDragContext
++	group = uiNewGroup("uiDragContext");
++	uiGroupSetMargined(group, 1);
++	uiBoxAppend(vbox, uiControl(group), 1);
++
++	form = uiNewForm();
++	uiFormSetPadded(form, 1);
++	uiGroupSetChild(group, uiControl(form));
++
++	// uiDragContextDragTypes
++	hbox = uiNewHorizontalBox();
++	uiBoxSetPadded(hbox, 1);
++
++	contextText = uiNewCheckbox("Text");
++	uiControlDisable(uiControl(contextText));
++	uiBoxAppend(hbox, uiControl(contextText), 0);
++	contextURIs = uiNewCheckbox("URIs");
++	uiControlDisable(uiControl(contextURIs));
++	uiBoxAppend(hbox, uiControl(contextURIs), 0);
++	// darwin layout fix; TODO fix uiBox and remove
++	uiBoxAppend(hbox, uiControl(uiNewLabel("")), 1);
++
++	uiFormAppend(form, "uiDragContextDragTypes", uiControl(hbox), 0);
++
++	// uiDragContextDragOperations
++	hbox = uiNewHorizontalBox();
++	uiBoxSetPadded(hbox, 1);
++
++	opNone = uiNewCheckbox("None");
++	uiControlDisable(uiControl(opNone));
++	uiBoxAppend(hbox, uiControl(opNone), 0);
++	opCopy = uiNewCheckbox("Copy");
++	uiControlDisable(uiControl(opCopy));
++	uiBoxAppend(hbox, uiControl(opCopy), 0);
++	opLink = uiNewCheckbox("Link");
++	uiControlDisable(uiControl(opLink));
++	uiBoxAppend(hbox, uiControl(opLink), 0);
++	opMove = uiNewCheckbox("Move");
++	uiControlDisable(uiControl(opMove));
++	uiBoxAppend(hbox, uiControl(opMove), 0);
++
++	uiFormAppend(form, "uiDragContextDragOperations", uiControl(hbox), 0);
++
++	// uiDragContextPosition
++	dragPos = uiNewLabel("");
++	uiFormAppend(form, "uiDragContextPosition", uiControl(dragPos), 0);
++
++	// uiDragContextDragData
++	dragData = uiNewMultilineEntry();
++	uiFormAppend(form, "uiDragContextDragData", uiControl(dragData), 1);
++
++	// OnEvent
++	eventLog = uiNewMultilineEntry();
++	uiBoxAppend(vbox, uiControl(eventLog), 1);
++
++	dragDest = uiNewDragDestination();
++	uiDragDestinationSetAcceptTypes(dragDest, uiDragTypeText | uiDragTypeURIs);
++
++	uiDragDestinationOnEnter(dragDest, onEnter, NULL);
++	uiDragDestinationOnMove(dragDest, onMove, NULL);
++	uiDragDestinationOnExit(dragDest, onExit, NULL);
++	uiDragDestinationOnDrop(dragDest, onDrop, NULL);
++
++	uiControlRegisterDragDestination(uiControl(label), dragDest);
++
++	uiControlShow(uiControl(w));
++	uiMain();
++	uiUninit();
++	return 0;
++}
++
+diff --git a/examples/meson.build b/examples/meson.build
+index 8690caa88..b493c185f 100644
+--- a/examples/meson.build
++++ b/examples/meson.build
+@@ -54,6 +54,9 @@ libui_examples = {
+ 	'window': {
+ 		'sources':		['window/main.c'],
+ 	},
++	'drag-drop': {
++		'sources':		['drag-drop/main.c'],
++	},
+ }
+ foreach name, args : libui_examples
+ 	# TODO once we upgrade to 0.49.0, add pie: true
+diff --git a/test/data/ascii b/test/data/ascii
+new file mode 100644
+index 000000000..c9c3825ad
+--- /dev/null
++++ b/test/data/ascii
+@@ -0,0 +1 @@
++ascii
+diff --git "a/test/data/\303\274nicode" "b/test/data/\303\274nicode"
+new file mode 100644
+index 000000000..9b27a2600
+--- /dev/null
++++ "b/test/data/\303\274nicode"
+@@ -0,0 +1 @@
++ünicode
+diff --git a/test/qa/dragdestination.c b/test/qa/dragdestination.c
+new file mode 100644
+index 000000000..22cb591c2
+--- /dev/null
++++ b/test/qa/dragdestination.c
+@@ -0,0 +1,410 @@
++#include <stdio.h>
++#include "qa.h"
++
++static int moved;
++static uiMultilineEntry *eventLog;
++static uiMultilineEntry *dragData;
++static uiDragDestination *dragDest;
++static uiLabel *dragPos;
++static uiDragOperation dragOp;
++
++static void updateDragContextPosition(uiDragContext *dc)
++{
++	char str[256];
++	int x;
++	int y;
++
++	uiDragContextPosition(dc, &x, &y);
++	sprintf(str, "%d:%d", x, y);
++	uiLabelSetText(dragPos, str);
++}
++
++static void updateDragData(uiDragDestination *dd, uiDragContext *dc)
++{
++	int i;
++	int types;
++	int accepted;
++	uiDragData *data;
++
++	uiMultilineEntrySetText(dragData, "");
++
++	types = uiDragContextDragTypes(dc);
++	accepted = uiDragDestinationAcceptTypes(dd);
++
++	if (types & accepted & uiDragTypeText) {
++		data = uiDragContextDragData(dc, uiDragTypeText);
++		if (data != NULL) {
++			uiMultilineEntryAppend(dragData, "text:\n");
++			uiMultilineEntryAppend(dragData, data->data.text);
++			uiMultilineEntryAppend(dragData, "\n");
++			uiFreeDragData(data);
++		}
++	}
++
++	if (types & accepted & uiDragTypeURIs) {
++		data = uiDragContextDragData(dc, uiDragTypeURIs);
++		if (data != NULL) {
++			uiMultilineEntryAppend(dragData, "URIs:\n");
++			for (i = 0; i < data->data.URIs.numURIs; ++i) {
++				uiMultilineEntryAppend(dragData, data->data.URIs.URIs[i]);
++				uiMultilineEntryAppend(dragData, "\n");
++			}
++			uiFreeDragData(data);
++		}
++	}
++}
++
++const char *dragdestinationDefaultNoAcceptGuide() {
++	return
++	"1.\tOpen a system file manager that supports drag and drop operations.\n"
++	"\tIn your libui-ng source directory navigate to `test/data`. You should\n"
++	"\tfind two files present `ascii` and `\u00fcnicode`.\n"
++	"\n"
++	"2.\tDrag a file `ascii` over the `Drag & Drop Zone`. The cursor should\n"
++	"\tnot change compared to the cursor displayed in the surrounding\n"
++	"\twindow and indicate that file drop is not supported.\n"
++	"\n"
++	;
++}
++
++uiControl* dragdestinationDefaultNoAccept()
++{
++	uiBox *vbox;
++	uiLabel *label;
++
++	vbox = uiNewVerticalBox();
++	uiBoxSetPadded(vbox, 1);
++
++	label = uiNewLabel("Drag & Drop Zone\nDrag & Drop Zone\nDrag & Drop Zone");
++	uiBoxAppend(vbox, uiControl(label), 0);
++
++	dragDest = uiNewDragDestination();
++	uiDragDestinationSetAcceptTypes(dragDest, uiDragTypeURIs);
++
++	uiControlRegisterDragDestination(uiControl(label), dragDest);
++
++	return uiControl(vbox);
++}
++
++static uiDragOperation onEnterLog(uiDragDestination *dd, uiDragContext *dc, void *senderData)
++{
++	if (dragOp != uiDragOperationNone && !(uiDragContextDragOperations(dc) & dragOp)) {
++		uiMultilineEntryAppend(eventLog, "Operation not supported by your file manager.\n");
++		uiMultilineEntryAppend(eventLog, "Please use a different file manager to complete this test.\n\n");
++	}
++
++	uiMultilineEntryAppend(eventLog, "Enter\n");
++	return dragOp;
++}
++
++static uiDragOperation onMoveLog(uiDragDestination *dd, uiDragContext *dc, void *senderData)
++{
++	if (moved == 0) {
++		moved = 1;
++		uiMultilineEntryAppend(eventLog, "Move\n");
++	}
++	return uiDragDestinationLastDragOperation(dd);
++}
++
++static void onExitLog(uiDragDestination *dd, void *senderData)
++{
++	moved = 0;
++	uiMultilineEntryAppend(eventLog, "Exit\n");
++}
++
++static int onDropLog(uiDragDestination *dd, uiDragContext *dc, void *senderData)
++{
++	moved = 0;
++	uiMultilineEntryAppend(eventLog, "Drop\n");
++	return 1;
++}
++
++uiControl* makeDragDestinationReturnDragOperation(uiDragOperation op)
++{
++	uiBox *vbox;
++	uiLabel *label;
++
++	moved = 0;
++	dragOp = op;
++
++	vbox = uiNewVerticalBox();
++	uiBoxSetPadded(vbox, 1);
++
++	label = uiNewLabel("Drag & Drop Zone\nDrag & Drop Zone\nDrag & Drop Zone");
++	uiBoxAppend(vbox, uiControl(label), 0);
++
++	uiBoxAppend(vbox, uiControl(uiNewHorizontalSeparator()), 0);
++
++	eventLog = uiNewMultilineEntry();
++	uiBoxAppend(vbox, uiControl(eventLog), 1);
++
++	dragDest = uiNewDragDestination();
++	uiDragDestinationSetAcceptTypes(dragDest, uiDragTypeURIs);
++
++	uiDragDestinationOnEnter(dragDest, onEnterLog, NULL);
++	uiDragDestinationOnMove(dragDest, onMoveLog, NULL);
++	uiDragDestinationOnExit(dragDest, onExitLog, NULL);
++	uiDragDestinationOnDrop(dragDest, onDropLog, NULL);
++
++	uiControlRegisterDragDestination(uiControl(label), dragDest);
++
++	return uiControl(vbox);
++}
++
++const char *dragdestinationReturnDragOperationNoneGuide() {
++	return
++	"1.\tOpen a system file manager that supports drag and drop operations.\n"
++	"\tIn your libui-ng source directory navigate to `test/data`.\n"
++	"\n"
++	"2.\tDrag the file `ascii` over the `Drag & Drop Zone`.\n"
++	"\tThe cursor should not change compared to the cursor displayed in the\n"
++	"\tsurrounding window and indicate that file drop is not supported.\n"
++	"\tThe log below should read `Enter` and `Move`.\n"
++	"\n"
++	"3.\tDrag the file out of the `Drag & Drop Zone`.\n"
++	"\tAnother line should appear in the log reading `Exit`.\n"
++	"\n"
++	"4.\tDrag the file over the `Drag & Drop Zone` again.\n"
++	"\tTwo more lines should appear in the log reading `Enter` and `Move`\n"
++	"\n"
++	"5.\tDrop the file on the `Drag & Drop Zone`.\n"
++	"\tA new line should appear in the log reading `Exit`.\n"
++	"\tThe file `ascii` in your file manager should be unaffected.\n"
++	"\n"
++	;
++}
++
++uiControl* dragdestinationReturnDragOperationNone()
++{
++	return makeDragDestinationReturnDragOperation(uiDragOperationNone);
++}
++
++const char *dragdestinationReturnDragOperationCopyGuide() {
++	return
++	"1.\tOpen a system file manager that supports drag and drop operations.\n"
++	"\tIn your libui-ng source directory navigate to `test/data`.\n"
++	"\n"
++	"2.\tDrag the file `ascii` over the `Drag & Drop Zone`.\n"
++	"\tThe cursor should change to a cursor that suggests that the file can\n"
++	"\tbe copied and file drop is supported.\n"
++	"\tThe log below should read `Enter` and `Move`.\n"
++	"\n"
++	"3.\tDrag the file out of the `Drag & Drop Zone`.\n"
++	"\tAnother line should appear in the log reading `Exit`.\n"
++	"\n"
++	"4.\tDrag the file over the `Drag & Drop Zone` again.\n"
++	"\tTwo more lines should appear in the log reading `Enter` and `Move`\n"
++	"\n"
++	"5.\tDrop the file on the `Drag & Drop Zone`.\n"
++	"\tA new line should appear in the log reading `Drop`.\n"
++	"\tThe file `ascii` in your file manager should be unaffected.\n"
++	"\n"
++	;
++}
++
++uiControl* dragdestinationReturnDragOperationCopy()
++{
++	return makeDragDestinationReturnDragOperation(uiDragOperationCopy);
++}
++
++const char *dragdestinationReturnDragOperationLinkGuide() {
++	return
++	"1.\tOpen a system file manager that supports drag and drop operations.\n"
++	"\tIn your libui-ng source directory navigate to `test/data`.\n"
++	"\n"
++	"2.\tDrag the file `ascii` over the `Drag & Drop Zone`.\n"
++	"\tThe cursor should change to a cursor that suggests that the file can\n"
++	"\tbe linked and file drop is supported.\n"
++	"\tThe log below should read `Enter` and `Move`.\n"
++	"\n"
++	"3.\tDrag the file out of the `Drag & Drop Zone`.\n"
++	"\tAnother line should appear in the log reading `Exit`.\n"
++	"\n"
++	"4.\tDrag the file over the `Drag & Drop Zone` again.\n"
++	"\tTwo more lines should appear in the log reading `Enter` and `Move`\n"
++	"\n"
++	"5.\tDrop the file on the `Drag & Drop Zone`.\n"
++	"\tA new line should appear in the log reading `Drop`.\n"
++	"\tThe file `ascii` in your file manager should be unaffected.\n"
++	"\n"
++	;
++}
++
++uiControl* dragdestinationReturnDragOperationLink()
++{
++	return makeDragDestinationReturnDragOperation(uiDragOperationLink);
++}
++
++const char *dragdestinationReturnDragOperationMoveGuide() {
++	return
++	"1.\tOpen a system file manager that supports drag and drop operations.\n"
++	"\tIn your libui-ng source directory navigate to `test/data`.\n"
++	"\n"
++	"2.\tDrag the file `ascii` over the `Drag & Drop Zone`.\n"
++	"\tThe cursor should change to a cursor that suggests that the file can\n"
++	"\tbe moved and file drop is supported.\n"
++	"\tThe log below should read `Enter` and `Move`.\n"
++	"\n"
++	"3.\tDrag the file out of the `Drag & Drop Zone`.\n"
++	"\tAnother line should appear in the log reading `Exit`.\n"
++	"\n"
++	"4.\tDrag the file over the `Drag & Drop Zone` again.\n"
++	"\tTwo more lines should appear in the log reading `Enter` and `Move`\n"
++	"\n"
++	"5.\tDrop the file on the `Drag & Drop Zone`.\n"
++	"\tA new line should appear in the log reading `Drop`.\n"
++	"\tThe file `ascii` in your file manager should be unaffected.\n"
++	"\n"
++	;
++}
++
++uiControl* dragdestinationReturnDragOperationMove()
++{
++	return makeDragDestinationReturnDragOperation(uiDragOperationMove);
++}
++
++static uiDragOperation onEnterMovePos(uiDragDestination *dd, uiDragContext *dc, void *senderData)
++{
++	updateDragContextPosition(dc);
++	return uiDragOperationCopy;
++}
++
++static int onDropPos(uiDragDestination *dd, uiDragContext *dc, void *senderData)
++{
++	updateDragContextPosition(dc);
++	return 1;
++}
++
++const char *dragdestinationDragContextPositionGuide() {
++	return
++	"1.\tOpen a system file manager that supports drag and drop operations.\n"
++	"\tIn your libui-ng source directory navigate to `test/data`.\n"
++	"\n"
++	"2.\tDrag the file `ascii` over the `Drag & Drop Zone`.\n"
++	"\n"
++	"3.\tDrag the file into the top left corner of the `Drag & Drop Zone`.\n"
++	"\tObserve how the coordinates converge towards 0:0.\n"
++	"\n"
++	"4.\tDrag the file into the bottom right corner of the\n"
++	"\t`Drag & Drop Zone`. Observe how the coordinates increase.\n"
++	"\n"
++	;
++}
++
++uiControl* dragdestinationDragContextPosition()
++{
++	uiBox *vbox;
++	uiLabel *label;
++
++	vbox = uiNewVerticalBox();
++	uiBoxSetPadded(vbox, 1);
++
++	label = uiNewLabel("Drag & Drop Zone\nDrag & Drop Zone\nDrag & Drop Zone");
++	uiBoxAppend(vbox, uiControl(label), 0);
++
++	uiBoxAppend(vbox, uiControl(uiNewHorizontalSeparator()), 0);
++
++	dragPos = uiNewLabel("");
++	uiBoxAppend(vbox, uiControl(dragPos), 0);
++
++	dragDest = uiNewDragDestination();
++	uiDragDestinationSetAcceptTypes(dragDest, uiDragTypeURIs);
++
++	uiDragDestinationOnEnter(dragDest, onEnterMovePos, NULL);
++	uiDragDestinationOnMove(dragDest, onEnterMovePos, NULL);
++	uiDragDestinationOnDrop(dragDest, onDropPos, NULL);
++
++	uiControlRegisterDragDestination(uiControl(label), dragDest);
++
++	return uiControl(vbox);
++}
++
++static uiDragOperation onEnterData(uiDragDestination *dd, uiDragContext *dc, void *senderData)
++{
++	updateDragData(dd, dc);
++	return uiDragOperationCopy;
++}
++
++static uiDragOperation onMoveData(uiDragDestination *dd, uiDragContext *dc, void *senderData)
++{
++	if (moved == 0) {
++		moved = 1;
++		updateDragData(dd, dc);
++	}
++	return uiDragDestinationLastDragOperation(dd);
++}
++
++static void onExitData(uiDragDestination *dd, void *senderData)
++{
++	moved = 0;
++}
++
++static int onDropData(uiDragDestination *dd, uiDragContext *dc, void *senderData)
++{
++	moved = 0;
++	updateDragData(dd, dc);
++	return 1;
++}
++
++const char *dragdestinationDragContextDragDataGuide() {
++	return
++	"1.\tOpen a system file manager that supports drag and drop operations.\n"
++	"\tIn your libui-ng source directory navigate to `test/data`.\n"
++	"\n"
++	"2.\tDrag the file `ascii` over the `Drag & Drop Zone`. You should see:\n"
++	"\t```\n\tURIs:\n\t/path/to/ascii\n\t```\n"
++	"\tYou may see more data types being listed that shall be ignored.\n"
++	"\n"
++	"3.\tDrop the file. The output should remain unchanged.\n"
++	"\n"
++	"4.\tDrag both files `ascii` and `\u00fcnicode` over the\n"
++	"\t`Drag & Drop Zone`. You should see something akin to:\n"
++	"\t```\n\tURIs:\n\t/path/to/ascii\n\t/path/to/\u00fcnicode\n\t```\n"
++	"\tPath separators will differ depending on your system and any file\n"
++	"\tordering shall be ignored.\n"
++	"\tYou may see more data types being listed that shall be ignored.\n"
++	"\n"
++	"5.\tOpen the file `ascii` with an editor that supports text drag and\n"
++	"\tdrop. Select the contained `ascii` text and drag it over the\n"
++	"\t`Drag & Drop Zone`. You should see:\n"
++	"\t```\n\ttext:\n\tascii\n\t```\n"
++	"\n"
++	"6.\tOpen the file `\u00fcnicode` with an editor that supports text\n"
++	"\tdrag and drop. Select the contained `\u00fcnicode` text and drag\n"
++	"\tit over the `Drag & Drop Zone`. You should see:\n"
++	"\t```\n\ttext:\n\t\u00fcnicode\n\t```\n"
++	"\n"
++	;
++}
++
++uiControl* dragdestinationDragContextDragData()
++{
++	uiBox *vbox;
++	uiLabel *label;
++
++	moved = 0;
++
++	vbox = uiNewVerticalBox();
++	uiBoxSetPadded(vbox, 1);
++
++	label = uiNewLabel("Drag & Drop Zone\nDrag & Drop Zone\nDrag & Drop Zone");
++	uiBoxAppend(vbox, uiControl(label), 0);
++
++	uiBoxAppend(vbox, uiControl(uiNewHorizontalSeparator()), 0);
++
++	dragData = uiNewMultilineEntry();
++	uiBoxAppend(vbox, uiControl(dragData), 1);
++
++	dragDest = uiNewDragDestination();
++	uiDragDestinationSetAcceptTypes(dragDest, uiDragTypeURIs | uiDragTypeText);
++
++	uiDragDestinationOnEnter(dragDest, onEnterData, NULL);
++	uiDragDestinationOnMove(dragDest, onMoveData, NULL);
++	uiDragDestinationOnExit(dragDest, onExitData, NULL);
++	uiDragDestinationOnDrop(dragDest, onDropData, NULL);
++
++	uiControlRegisterDragDestination(uiControl(label), dragDest);
++
++	return uiControl(vbox);
++}
++
+diff --git a/test/qa/main.c b/test/qa/main.c
+index 2e1e0f616..520f3804e 100644
+--- a/test/qa/main.c
++++ b/test/qa/main.c
+@@ -47,12 +47,24 @@ struct controlTestCase windowTestCases[] = {
+ 	{NULL, NULL, NULL}
+ };
+ 
++struct controlTestCase dragdestinationTestCases[] = {
++	QA_TEST("1. Default No Accept", dragdestinationDefaultNoAccept),
++	QA_TEST("2. Drag Operation None", dragdestinationReturnDragOperationNone),
++	QA_TEST("3. Drag Operation Copy", dragdestinationReturnDragOperationCopy),
++	QA_TEST("4. Drag Operation Link", dragdestinationReturnDragOperationLink),
++	QA_TEST("5. Drag Operation Move", dragdestinationReturnDragOperationMove),
++	QA_TEST("6. Drag Context Position", dragdestinationDragContextPosition),
++	QA_TEST("7. Drag Context Drag Data", dragdestinationDragContextDragData),
++	{NULL, NULL, NULL}
++};
++
+ struct controlTestGroup controlTestGroups[] = {
+ 	{"uiButton", buttonTestCases},
+ 	{"uiCheckbox", checkboxTestCases},
+ 	{"uiEntry", entryTestCases},
+ 	{"uiLabel", labelTestCases},
+ 	{"uiWindow", windowTestCases},
++	{"uiDragDestination", dragdestinationTestCases},
+ };
+ 
+ uiControl* qaGuide()
+diff --git a/test/qa/meson.build b/test/qa/meson.build
+index fd0c6d841..796cf4bd5 100644
+--- a/test/qa/meson.build
++++ b/test/qa/meson.build
+@@ -6,6 +6,7 @@ libui_qa_sources = [
+ 	'entry.c',
+ 	'label.c',
+ 	'window.c',
++	'dragdestination.c',
+ ]
+ 
+ if libui_OS == 'windows'
+diff --git a/test/qa/qa.h b/test/qa/qa.h
+index b4e7486c6..8d32e7857 100644
+--- a/test/qa/qa.h
++++ b/test/qa/qa.h
+@@ -20,7 +20,6 @@ QA_DECLARE_TEST(searchEntryOnChanged);
+ 
+ QA_DECLARE_TEST(labelMultiLine);
+ 
+-
+ QA_DECLARE_TEST(windowFullscreen);
+ QA_DECLARE_TEST(windowBorderless);
+ QA_DECLARE_TEST(windowResizeable);
+@@ -28,5 +27,13 @@ QA_DECLARE_TEST(windowFullscreenBorderless);
+ QA_DECLARE_TEST(windowFullscreenResizeable);
+ QA_DECLARE_TEST(windowResizeableBorderless);
+ 
++QA_DECLARE_TEST(dragdestinationDefaultNoAccept);
++QA_DECLARE_TEST(dragdestinationReturnDragOperationNone);
++QA_DECLARE_TEST(dragdestinationReturnDragOperationCopy);
++QA_DECLARE_TEST(dragdestinationReturnDragOperationLink);
++QA_DECLARE_TEST(dragdestinationReturnDragOperationMove);
++QA_DECLARE_TEST(dragdestinationDragContextPosition);
++QA_DECLARE_TEST(dragdestinationDragContextDragData);
++
+ #endif
+ 
+diff --git a/ui.h b/ui.h
+index cfb801e39..922790b97 100644
+--- a/ui.h
++++ b/ui.h
+@@ -15,6 +15,7 @@
+  * @defgroup dialogWindow Dialog windows
+  * @defgroup menu Menus
+  * @defgroup table Tables
++ * @defgroup dragndrop Drag and drop
+  */
+ 
+ #ifndef __LIBUI_UI_H__
+@@ -95,6 +96,320 @@ _UI_EXTERN void uiOnShouldQuit(int (*f)(void *data), void *data);
+ _UI_EXTERN void uiFreeText(char *text);
+ 
+ 
++/**
++ * @addtogroup dragndrop
++ * @{
++ *
++ * Types and methods for handling drag events.
++ *
++ * To receive drag (and drop) events you need to implement the following:
++ *
++ * 1. Create a new uiDragDestination.
++ * 2. Specify the data types (#uiDragType) your drag destination accepts. See
++ *    uiDragDestinationSetAcceptTypes().
++ * 3. Implement at least the callbacks uiDragDestinationOnEnter() and
++ *    uiDragDestinationOnDrop().
++ * 4. Your *enter* callback specifies what type of #uiDragOperation your
++ *    application wants to perform with the data so that it can display an
++ *    appropriate mouse cursor. You may inspect the data via
++ *    uiDragContextDragData().
++ * 5. Your *drop* callback implements the data handling via
++ *    uiDragContextDragData() and finalizes the drag and drop operation by
++ *    returning either `TRUE` to signal a successful *drop* or `FALSE` to
++ *    indicate that the *drop* was unsuccessful.
++ * 6. Register your drag destination with a uiControl of your choice. See
++ *    uiControlRegisterDragDestination().
++ *
++ * Important notes:
++ *
++ * - The #uiDragOperation that you return in the Enter/Move callbacks must
++ *   be a drag operation listed in uiDragContextDragOperations()! Not all
++ *   drag sources support all drag operations. Returning an invalid drag
++ *   operation is an error and will abort any further processing.
++ * - If your drag destination supports multiple data types: Make sure to check
++ *   uiDragContextDragTypes() for types supplied within the context before
++ *   calling uiDragContextDragData().
++ *
++ * @}
++ */
++
++
++/**
++ * Drag operations.
++ *
++ * Signals to the operating system what type of drag operation is about to be
++ * performed. This influences the cursor being presented to the user and how
++ * the data being dragged is handled once dropped.
++ *
++ * @enum uiDragOperation
++ * @ingroup dragndrop
++ */
++_UI_ENUM(uiDragOperation) {
++	uiDragOperationNone = 0,      //!< No operation, drag denied
++	uiDragOperationCopy = 1 << 0, //!< Copy operation, source stays intact
++	uiDragOperationLink = 1 << 1, //!< Link operation, source stays intact
++	uiDragOperationMove = 1 << 2, //!< Move operation, source is destroyed
++};
++
++
++/**
++ * Drag content types.
++ *
++ * @enum uiDragType
++ * @ingroup dragndrop
++ */
++_UI_ENUM(uiDragType) {
++	uiDragTypeText  = 1 << 0, //!< Plain text.
++	uiDragTypeURIs  = 1 << 1, //!< List of URIs.
++};
++
++
++/**
++ * Drag data to be transferred.
++ *
++ * @struct uiDragData
++ * @ingroup dragndrop
++ */
++typedef struct uiDragData uiDragData;
++struct uiDragData
++{
++	uiDragType type; //!< Data type.
++	union {
++		//! For uiDragTypeText. A valid, `NUL` terminated UTF-8 string.
++		char *text;
++		struct uiDragDataURIs {
++			int numURIs; //!< Number of URIs.
++			char **URIs; //!< Array of `NUL` terminated strings.
++		} URIs; //!< For uiDragTypeURIs.
++	} data;
++};
++
++/**
++ * Frees the given uiDragData and all its resources.
++ *
++ * @param d uiDragData instance.
++ * @memberof uiDragData
++ */
++_UI_EXTERN void uiFreeDragData(uiDragData* d);
++
++
++/**
++ * Drag context containing supported drag types, drag operations, cursor position, and data.
++ *
++ * @struct uiDragContext
++ * @ingroup dragndrop
++ */
++typedef struct uiDragContext uiDragContext;
++
++/**
++ * Returns the current cursor position of the drag event.
++ *
++ * Coordinates are measured from the top left corner of the control.
++ *
++ * @param dc uiDragContext instance.
++ * @param[out] x X position of the window.
++ * @param[out] y Y position of the window.
++ *
++ * @memberof uiDragContext
++ */
++_UI_EXTERN void uiDragContextPosition(uiDragContext *dc, int *x, int *y);
++
++/**
++ * Returns the drag types supported by the context.
++ *
++ * @param dc uiDragContext instance.
++ * @returns A bit mask of #uiDragType.
++ *
++ * @memberof uiDragContext
++ */
++_UI_EXTERN int uiDragContextDragTypes(uiDragContext *dc);
++
++/**
++ * Returns the drag operations supported by the context.
++ *
++ * @param dc uiDragContext instance.
++ * @returns A bit mask of #uiDragOperation.
++ *
++ * @memberof uiDragContext
++ */
++_UI_EXTERN int uiDragContextDragOperations(uiDragContext *dc);
++
++/**
++ * Returns the drag data.
++ *
++ * @param dc uiDragContext instance.
++ * @param type Data type to retrieve. Make sure this data is supplied by the
++ *             context by calling uiDragContextDragTypes().
++ * @returns Drag event data, or `NULL` on failure.\n
++ *          Data is owned by the caller, make sure to call `uiFreeDragData()`.
++ *
++ * @memberof uiDragContext
++ */
++_UI_EXTERN uiDragData* uiDragContextDragData(uiDragContext *dc, uiDragType type);
++
++
++/**
++ * Drag destination to receive drag and drop events.
++ *
++ * You must at least specify the uiDragDestinationOnEnter() and uiDragDestinationOnDrop()
++ * callback to handle drop events and process the data. All other callbacks are optional.
++ *
++ * Make sure to register the drag destination with a uiControl via
++ * uiControlRegisterDragDestination().
++ *
++ * @struct uiDragDestination
++ * @ingroup dragndrop
++ */
++typedef struct uiDragDestination uiDragDestination;
++
++/**
++ * Registers a callback for when a user drag first enters the drag destination.
++ *
++ * Returning `uiDragOperationNone` will still trigger the *OnMove* callback
++ * to give you the ability to accept/reject depending on cursor position.
++ *
++ * @param dd uiDragDestination instance.
++ * @param f Callback function.\n
++ *          @p sender Back reference to the instance that triggered the callback.\n
++ *          @p dc Drag context.\n
++ *                The pointer is only valid for the duration of the callback.
++ *          @p senderData User data registered with the sender instance.\n
++ *          Return:\n
++ *          A #uiDragOperation to signal if or how to accept the drag. To accept
++ *          choose one of the operations listed in uiDragContextDragOperations()
++ *          or return `uiDragOperationNone` to reject the drop.
++ * @param data User data to be passed to the callback.
++ *
++ * @note Only one callback can be registered at a time.
++ * @memberof uiDragDestination
++ */
++_UI_EXTERN void uiDragDestinationOnEnter(uiDragDestination *dd,
++	uiDragOperation (*f)(uiDragDestination *sender, uiDragContext *dc, void *senderData), void *data);
++
++
++/**
++ * Registers a callback for when a user drag moves on the drag destination.
++ *
++ * @note Implementing this callback is optional.
++ *
++ * @param dd uiDragDestination instance.
++ * @param f Callback function.\n
++ *          @p sender Back reference to the instance that triggered the callback.\n
++ *          @p dc Drag context.\n
++ *                The pointer is only valid for the duration of the callback.
++ *          @p senderData User data registered with the sender instance.\n
++ *          Return:\n
++ *          A #uiDragOperation to signal if or how to accept the drag. To accept
++ *          choose one of the operations listed in uiDragContextDragOperations()
++ *          or return `uiDragOperationNone` to reject the drop.
++ * @param data User data to be passed to the callback.
++ *
++ * @note Only one callback can be registered at a time.
++ * @memberof uiDragDestination
++ */
++_UI_EXTERN void uiDragDestinationOnMove(uiDragDestination *dd,
++	uiDragOperation (*f)(uiDragDestination *sender, uiDragContext *dc, void *senderData), void *data);
++
++
++/**
++ * Registers a callback for when a user drag exits the drag destination or if aborted.
++ *
++ * Callback to do any cleanup that may be necessary from *OnEnter* and/or *OnMove*.
++ *
++ * This callback gets triggered in one of two cases:
++ *
++ * - The user drag exits the drag destination zone.
++ * - The drag is rejected in *OnEnter* or subsequently in *OnMove* by returning
++ *   `uiDragOperationNone` and the user releasing the drag over the drag
++ *   destination zone.
++ *
++ * This callback is never triggered in conjunction with *OnDrop*.
++ *
++ * @note Implementing this callback is optional.
++ *
++ * @param dd uiDragDestination instance.
++ * @param f Callback function.\n
++ *          @p sender Back reference to the instance that triggered the callback.\n
++ *          @p senderData User data registered with the sender instance.
++ * @param data User data to be passed to the callback.
++ *
++ * @note Only one callback can be registered at a time.
++ * @memberof uiDragDestination
++ */
++_UI_EXTERN void uiDragDestinationOnExit(uiDragDestination *dd,
++	void (*f)(uiDragDestination *sender, void *senderData), void *data);
++
++/**
++ * Registers a callback for when a user drag is dropped on the drag destination.
++ *
++ * Make sure to also perform any cleanup necessary from *OnEnter* and/or *OnMove*
++ * as the *OnExit* callback will not be triggered.
++ *
++ * @param dd uiDragDestination instance.
++ * @param f Callback function.\n
++ *          @p sender Back reference to the instance that triggered the callback.\n
++ *          @p dc Drag context.\n
++ *                The pointer is only valid for the duration of the callback.
++ *          @p senderData User data registered with the sender instance.\n
++ *          Return:\n
++ *          `TRUE` to accept the drop, `FALSE` to reject the drop.
++ * @param data User data to be passed to the callback.
++ *
++ * @note Only one callback can be registered at a time.
++ * @memberof uiDragDestination
++ */
++_UI_EXTERN void uiDragDestinationOnDrop(uiDragDestination *dd,
++	int (*f)(uiDragDestination *sender, uiDragContext *dc, void *senderData), void *data);
++
++/**
++ * Returns the types accepted by the drag destination.
++ *
++ * @param dd uiDragDestination instance.
++ * @returns A bit mask of #uiDragType. [Default: `0`]
++ *
++ * @memberof uiDragDestination
++ */
++_UI_EXTERN int uiDragDestinationAcceptTypes(uiDragDestination* dd);
++
++/**
++ * Sets the types that are accepted by the drag destination.
++ *
++ * @param dd uiDragDestination instance.
++ * @param typeMask A bit mask of #uiDragType.
++ *
++ * @memberof uiDragDestination
++ */
++_UI_EXTERN void uiDragDestinationSetAcceptTypes(uiDragDestination* dd, int typeMask);
++
++/**
++ * Returns the last drag operation returned by the last drag destination callback called.
++ *
++ * This is a convenience function for you to not have to cache the drag operation
++ * that you returned in your last callback.
++ *
++ * Useful if you need to inspect the data to determine the type of operation to
++ * perform. Do said processing in your onEnter callback, return your desired
++ * operation and simply return uiDragDestinationLastDragOperation() for your
++ * onMove and onDrop callbacks.
++ *
++ * @param dd uiDragDestination instance.
++ * @return The last #uiDragOperation returned by one of your callbacks or
++ *         `uiDragOperationNone` when called form the context of onEnter.
++ *
++ * @memberof uiDragDestination
++ */
++_UI_EXTERN uiDragOperation uiDragDestinationLastDragOperation(uiDragDestination* dd);
++
++/**
++ * Creates a new uiDragDestination.
++ *
++ * @returns A new uiDragDestination instance.
++ *
++ * @memberof uiDragDestination @static
++ */
++_UI_EXTERN uiDragDestination* uiNewDragDestination(void);
++
++
+ /**
+  * Base class for GUI controls providing common methods.
+  *
+@@ -116,6 +431,7 @@ struct uiControl {
+ 	int (*Enabled)(uiControl *);
+ 	void (*Enable)(uiControl *);
+ 	void (*Disable)(uiControl *);
++	uiDragDestination *dragDest;
+ };
+ // TOOD add argument names to all arguments
+ #define uiControl(this) ((uiControl *) (this))
+@@ -223,6 +539,18 @@ _UI_EXTERN void uiControlEnable(uiControl *c);
+  */
+ _UI_EXTERN void uiControlDisable(uiControl *c);
+ 
++/**
++ * Registers a drag destination.
++ *
++ * @param c uiControl instance.
++ * @param dd uiDragDestination instance.\n
++ *           Ownership is transferred to the uiControl.
++ *
++ * @note Only one drag destination can be registered at a time.
++ * @memberof uiControl
++ */
++_UI_EXTERN void uiControlRegisterDragDestination(uiControl *c, uiDragDestination *dd);
++
+ /**
+  * Allocates a uiControl.
+  *
+@@ -536,7 +864,6 @@ _UI_EXTERN void uiWindowSetResizeable(uiWindow *w, int resizeable);
+  */
+ _UI_EXTERN uiWindow *uiNewWindow(const char *title, int width, int height, int hasMenubar);
+ 
+-
+ /**
+  * A control that visually represents a button to be clicked by the user to trigger an action.
+  *
+diff --git a/ui_darwin.h b/ui_darwin.h
+index c9c6ad54e..1cd643e70 100644
+--- a/ui_darwin.h
++++ b/ui_darwin.h
+@@ -217,6 +217,42 @@ _UI_EXTERN void uiDarwinNotifyVisibilityChanged(uiDarwinControl *c);
+ _UI_EXTERN CGFloat uiDarwinMarginAmount(void *reserved);
+ _UI_EXTERN CGFloat uiDarwinPaddingAmount(void *reserved);
+ 
++/**
++ * uiDragDestination methods to comply with the NSDraggingDestination protocol.
++ *
++ * Every uiControl must call this macro to ensure it can handle drag destination
++ * events.
++ *
++ * @param handlefield Handle to the struct field that inherits from NSView.
++ */
++#define uiDarwinDragDestinationMethods(handlefield) \
++- (NSDragOperation)draggingEntered:(id<NSDraggingInfo>)sender \
++{ \
++	uiControl *c = uiControl(self->handlefield); \
++	uiDragContext dc = { .info = sender, .view = (NSView*)self }; \
++	c->dragDest->op = uiDragOperationNone; \
++	c->dragDest->op = c->dragDest->onEnter(c->dragDest, &dc, c->dragDest->onEnterData); \
++	return uiprivDragOperationToNSDragOperation(c->dragDest->op); \
++} \
++- (NSDragOperation)draggingUpdated:(id<NSDraggingInfo>)sender \
++{ \
++	uiControl *c = uiControl(self->handlefield); \
++	uiDragContext dc = { .info = sender, .view = (NSView*)self }; \
++	c->dragDest->op = c->dragDest->onMove(c->dragDest, &dc, c->dragDest->onMoveData); \
++	return uiprivDragOperationToNSDragOperation(c->dragDest->op); \
++} \
++- (void)draggingExited:(id<NSDraggingInfo>)sender \
++{ \
++	uiControl *c = uiControl(self->handlefield); \
++	c->dragDest->onExit(c->dragDest, c->dragDest->onExitData); \
++} \
++- (BOOL)performDragOperation:(id <NSDraggingInfo>)sender \
++{ \
++	uiControl *c = uiControl(self->handlefield); \
++	uiDragContext dc = { .info = sender, .view = (NSView*)self }; \
++	return c->dragDest->onDrop(c->dragDest, &dc, c->dragDest->onDropData); \
++}
++
+ #ifdef __cplusplus
+ }
+ #endif
+diff --git a/unix/control.c b/unix/control.c
+index f6fdcea2a..669c71bd2 100644
+--- a/unix/control.c
++++ b/unix/control.c
+@@ -1,5 +1,6 @@
+ // 16 august 2015
+ #include "uipriv_unix.h"
++#include "dragcontext.h"
+ 
+ void uiUnixControlSetContainer(uiUnixControl *c, GtkContainer *container, gboolean remove)
+ {
+@@ -12,3 +13,207 @@ uiUnixControl *uiUnixAllocControl(size_t n, uint32_t typesig, const char *typena
+ {
+ 	return uiUnixControl(uiAllocControl(n, uiUnixControlSignature, typesig, typenamestr));
+ }
++
++static gint dragOperationToGdkAction(uiDragOperation op)
++{
++	switch (op) {
++		case uiDragOperationNone:
++			return 0;
++		case uiDragOperationCopy:
++			return GDK_ACTION_COPY;
++		case uiDragOperationLink:
++			return GDK_ACTION_LINK;
++		case uiDragOperationMove:
++			return GDK_ACTION_MOVE;
++	}
++	return 0;
++}
++
++static gboolean onDragMotion(GtkWidget *widget, GdkDragContext *context, gint x, gint y, guint time, gpointer userdata)
++{
++	uiControl *c = (uiControl*)userdata;
++	uiprivDragDestination *priv = c->dragDest->priv;
++	uiDragContext dc = { .widget = widget, .context = context, .x = x, .y = y, .time = time, .dd = c->dragDest };
++
++	if (!priv->dragEnter) {
++		priv->dragEnter = TRUE;
++		c->dragDest->op = uiDragOperationNone;
++		c->dragDest->op = c->dragDest->onEnter(c->dragDest, &dc, c->dragDest->onEnterData);
++	} else {
++		c->dragDest->op = c->dragDest->onMove(c->dragDest, &dc, c->dragDest->onMoveData);
++	}
++
++	gdk_drag_status(context, dragOperationToGdkAction(c->dragDest->op), time);
++	return TRUE;
++}
++
++static gboolean onDragDrop(GtkWidget* widget, GdkDragContext* context, gint x, gint y, guint time, gpointer userdata)
++{
++	int success;
++	uiControl *c = (uiControl*)userdata;
++	uiDragContext dc = { .widget = widget, .context = context, .x = x, .y = y, .time = time, .dd = c->dragDest };
++
++	success = c->dragDest->onDrop(c->dragDest, &dc, c->dragDest->onDropData);
++	if (!success)
++		return FALSE;
++
++	switch (c->dragDest->op) {
++		case uiDragOperationNone:
++			gtk_drag_finish(context, FALSE, FALSE, time);
++			break;
++		case uiDragOperationLink:
++		case uiDragOperationCopy:
++			gtk_drag_finish(context, TRUE, FALSE, time);
++			break;
++		case uiDragOperationMove:
++			gtk_drag_finish(context, TRUE, TRUE, time);
++			break;
++	}
++
++	return TRUE;
++}
++
++void onDragLeave(GtkWidget *widget, GdkDragContext *context, guint time, gpointer userdata)
++{
++	uiControl *c = (uiControl*)userdata;
++	uiprivDragDestination *priv = c->dragDest->priv;
++	GdkEvent *event;
++	GdkEventType type;
++
++	priv->dragEnter = FALSE;
++
++	event = gtk_get_current_event();
++	if (event != NULL) {
++		type = event->type;
++		gdk_event_free(event);
++		// Prevent onExit() if we are in the context of an impending
++		// drop. According to the GTK3 source "drag-leave" gets signalled
++		// when event->type equals GDK_DROP_START [gtkdnd.c].
++		if (type == GDK_DROP_START)
++			return;
++	}
++	c->dragDest->onExit(c->dragDest, c->dragDest->onExitData);
++}
++
++static void onDragDataReceived(GtkWidget* widget, GdkDragContext* context, gint x, gint y, GtkSelectionData* data, guint info, guint time, gpointer userdata)
++{
++	uiControl *c = (uiControl*)userdata;
++	uiprivDragDestination *priv = c->dragDest->priv;
++	uiDragData *d = NULL;
++
++	priv->data = NULL;
++
++	if (info != priv->requestedType)
++		return;
++
++	priv->dataReceived = TRUE;
++
++	if (gtk_selection_data_get_length(data) < 0)
++		return;
++
++	if (info == uiDragTypeText) {
++		guchar *text;
++
++		text = gtk_selection_data_get_text(data);
++		if (text == NULL)
++			return;
++
++		d = uiprivNew(uiDragData);
++		d->type = info;
++		d->data.text = (char*)text;
++	}
++	else if (info == uiDragTypeURIs) {
++		int i;
++		int k;
++		gchar **uris;
++
++		uris = gtk_selection_data_get_uris(data);
++		if (uris == NULL)
++			return;
++
++		d = uiprivNew(uiDragData);
++		d->type = info;
++		d->data.URIs.numURIs = 0;
++		for (i = 0; uris[i] != NULL; ++i)
++			++d->data.URIs.numURIs;
++
++		if (d->data.URIs.numURIs == 0)
++			d->data.URIs.URIs = NULL;
++		else
++			d->data.URIs.URIs = uiprivAlloc(d->data.URIs.numURIs * sizeof(*d->data.URIs.URIs), "uiDragData->data.URIs.URIs");
++
++		for (i = 0, k = 0; uris[i] != NULL; ++i) {
++			GError *err = NULL;
++
++			d->data.URIs.URIs[k] = g_filename_from_uri(uris[i], NULL, &err);
++			if (err != NULL) {
++				--d->data.URIs.numURIs;
++				// TODO use error logging
++				fprintf(stderr, "Failed to get file name: %s\n", err->message);
++				g_error_free(err);
++			}
++			else {
++				++k;
++			}
++		}
++		g_strfreev(uris);
++	}
++
++	priv->data = d;
++}
++
++void uiprivControlDestroyDragDestination(uiControl *c)
++{
++	GtkWidget *w = (GtkWidget*)uiControlHandle(c);
++
++	// TODO g_signal_disconnect to support a new register on the same control
++	gtk_drag_dest_unset(w);
++
++	uiprivFree(c->dragDest->priv);
++	uiprivFree(c->dragDest);
++	c->dragDest = NULL;
++}
++
++void uiControlRegisterDragDestination(uiControl *c, uiDragDestination *dd)
++{
++	uiprivDragDestination *priv;
++	GArray *targets;
++	GtkWidget *w = (GtkWidget*)uiControlHandle(c);
++	GdkDragAction actions = GDK_ACTION_COPY | GDK_ACTION_LINK | GDK_ACTION_MOVE;
++
++	if (c->dragDest == NULL) {
++		g_signal_connect(w, "drag-motion", G_CALLBACK(onDragMotion), c);
++		g_signal_connect(w, "drag-drop", G_CALLBACK(onDragDrop), c);
++		g_signal_connect(w, "drag-data-received", G_CALLBACK(onDragDataReceived), c);
++		g_signal_connect(w, "drag-leave", G_CALLBACK(onDragLeave), c);
++	} else {
++		uiprivControlDestroyDragDestination(c);
++	}
++
++	if (dd == NULL)
++		return;
++
++	priv = uiprivAlloc(sizeof(uiprivDragDestination), "uiDragDestination->priv");
++	priv->dragEnter = FALSE;
++	priv->dataReceived = FALSE;
++	priv->info = 0;
++	priv->requestedType = 0;
++	priv->data = NULL;
++	dd->priv = priv;
++
++	c->dragDest = dd;
++
++	targets = g_array_new(0, 0, sizeof(GtkTargetEntry));
++	if (dd->typeMask & uiDragTypeURIs) {
++		GtkTargetEntry entryURIs = {"text/uri-list", GTK_TARGET_OTHER_APP, uiDragTypeURIs};
++		g_array_append_vals(targets, &entryURIs, 1);
++	}
++	if (dd->typeMask & uiDragTypeText) {
++		GtkTargetEntry entryText = {"text/plain;charset=utf-8", GTK_TARGET_OTHER_APP, uiDragTypeText};
++		g_array_append_vals(targets, &entryText, 1);
++	}
++
++	gtk_drag_dest_set(w, 0, (GtkTargetEntry*)targets->data, targets->len, actions);
++	g_array_free(targets, 1);
++}
++
+diff --git a/unix/dragcontext.c b/unix/dragcontext.c
+new file mode 100644
+index 000000000..4c09a5169
+--- /dev/null
++++ b/unix/dragcontext.c
+@@ -0,0 +1,90 @@
++#include "uipriv_unix.h"
++#include "dragcontext.h"
++
++static int contextToDragTypeMask(GdkDragContext *context)
++{
++	GList *list;
++	GdkAtom uri = gdk_atom_intern("text/uri-list", TRUE);
++	GdkAtom text = gdk_atom_intern("text/plain;charset=utf-8", TRUE);
++	int mask = 0;
++
++	list = gdk_drag_context_list_targets(context);
++	if (list == NULL)
++		return 0;
++
++	while (list) {
++		if (list->data == text)
++			mask |= uiDragTypeText;
++		if (list->data == uri)
++			mask |= uiDragTypeURIs;
++
++		list = list->next;
++	}
++	g_list_free(list);
++
++	return mask;
++}
++
++static int gdkActionMaskToDragOperationMask(GdkDragAction as)
++{
++	int ops = uiDragOperationNone;
++
++	if (as & GDK_ACTION_COPY)
++		ops |= uiDragOperationCopy;
++	if (as & GDK_ACTION_LINK)
++		ops |= uiDragOperationLink;
++	if (as & GDK_ACTION_MOVE)
++		ops |= uiDragOperationMove;
++
++	return ops;
++}
++
++void uiDragContextPosition(uiDragContext *dc, int *x, int *y)
++{
++	*x = dc->x;
++	*y = dc->y;
++}
++
++int uiDragContextDragTypes(uiDragContext *dc)
++{
++	return contextToDragTypeMask(dc->context);
++}
++
++int uiDragContextDragOperations(uiDragContext *dc)
++{
++	return gdkActionMaskToDragOperationMask(gdk_drag_context_get_actions(dc->context));
++}
++
++uiDragData* uiDragContextDragData(uiDragContext *dc, uiDragType type)
++{
++	uiprivDragDestination *priv = dc->dd->priv;
++	GdkAtom atom;
++	int mask;
++
++	mask = contextToDragTypeMask(dc->context);
++	if (!(mask & type) || !(dc->dd->typeMask & type)) {
++		uiprivUserBug("Requested uiDragType (%d) is not supported by the context", type);
++		return NULL;
++	}
++
++	switch (type) {
++		case uiDragTypeText:
++			atom = gdk_atom_intern("text/plain;charset=utf-8", TRUE);
++			break;
++		case uiDragTypeURIs:
++			atom = gdk_atom_intern("text/uri-list", TRUE);
++			break;
++		default:
++			return NULL;
++	}
++
++	priv->dataReceived = FALSE;
++	priv->requestedType = type;
++	gtk_drag_get_data(dc->widget, dc->context, atom, dc->time);
++	while (!priv->dataReceived)
++		if (!uiMainStep(1))
++			break;
++
++	return priv->data;
++}
++
+diff --git a/unix/dragcontext.h b/unix/dragcontext.h
+new file mode 100644
+index 000000000..bcb9bbe2d
+--- /dev/null
++++ b/unix/dragcontext.h
+@@ -0,0 +1,23 @@
++#ifndef __UI_DRAGCONTEXT_H__
++#define __UI_DRAGCONTEXT_H__
++
++struct uiDragContext {
++	GtkWidget *widget;
++	GdkDragContext *context;
++	gint x;
++	gint y;
++	guint time;
++	uiDragDestination *dd;
++};
++
++typedef struct uiprivDragDestination uiprivDragDestination;
++struct uiprivDragDestination {
++	gboolean dragEnter;
++	gboolean dataReceived;
++	guint info;
++	uiDragType requestedType;
++	uiDragData *data;
++};
++
++#endif
++
+diff --git a/unix/dragdata.c b/unix/dragdata.c
+new file mode 100644
+index 000000000..2ddeafd9b
+--- /dev/null
++++ b/unix/dragdata.c
+@@ -0,0 +1,20 @@
++#include "uipriv_unix.h"
++
++void uiFreeDragData(uiDragData *d)
++{
++	int i;
++
++	switch (d->type) {
++		case uiDragTypeText:
++			g_free(d->data.text);
++			break;
++		case uiDragTypeURIs:
++			for (i = 0; i < d->data.URIs.numURIs; ++i)
++				g_free(d->data.URIs.URIs[i]);
++			if (d->data.URIs.URIs != NULL)
++				uiprivFree(d->data.URIs.URIs);
++			break;
++	}
++	uiprivFree(d);
++}
++
+diff --git a/unix/meson.build b/unix/meson.build
+index f8004fbd2..3ac0d3d14 100644
+--- a/unix/meson.build
++++ b/unix/meson.build
+@@ -14,6 +14,8 @@ libui_sources += [
+ 	'unix/control.c',
+ 	'unix/datetimepicker.c',
+ 	'unix/debug.c',
++	'unix/dragcontext.c',
++	'unix/dragdata.c',
+ 	'unix/draw.c',
+ 	'unix/drawmatrix.c',
+ 	'unix/drawpath.c',
+diff --git a/windows/control.cpp b/windows/control.cpp
+index ce953cf94..0eeb636ec 100644
+--- a/windows/control.cpp
++++ b/windows/control.cpp
+@@ -1,5 +1,6 @@
+ // 16 august 2015
+ #include "uipriv_windows.hpp"
++#include "droptarget.hpp"
+ 
+ void uiWindowsControlSyncEnableState(uiWindowsControl *c, int enabled)
+ {
+@@ -119,3 +120,43 @@ void uiWindowsControlNotifyVisibilityChanged(uiWindowsControl *c)
+ 	// TODO we really need to figure this out; the duplication is a mess
+ 	uiWindowsControlContinueMinimumSizeChanged(c);
+ }
++
++void uiprivControlDestroyDragDestination(uiControl *c)
++{
++	HWND hwnd = (HWND)uiControlHandle(c);
++	LPDROPTARGET lpDropTarget = NULL;
++
++	lpDropTarget = (LPDROPTARGET)c->dragDest->priv;
++	if (lpDropTarget != NULL) {
++		RevokeDragDrop(hwnd);
++		lpDropTarget->Release();
++		CoLockObjectExternal(lpDropTarget, false, true);
++	}
++
++	uiprivFree(c->dragDest);
++	c->dragDest = NULL;
++}
++
++void uiControlRegisterDragDestination(uiControl *c, uiDragDestination *dd)
++{
++	HWND hwnd = (HWND)uiControlHandle(c);
++	LPDROPTARGET lpDropTarget = NULL;
++
++	if (c->dragDest != NULL)
++		uiprivControlDestroyDragDestination(c);
++
++	if (dd == NULL)
++		return;
++
++	c->dragDest = dd;
++
++	lpDropTarget = (LPDROPTARGET)new uiDropTarget(c->dragDest, hwnd);
++	CoLockObjectExternal(lpDropTarget, true, true);
++	if (RegisterDragDrop(hwnd, lpDropTarget) != S_OK) {
++		lpDropTarget->Release();
++		CoLockObjectExternal(lpDropTarget, false, true);
++		lpDropTarget = NULL;
++	}
++	c->dragDest->priv = lpDropTarget;
++}
++
+diff --git a/windows/dragcontext.cpp b/windows/dragcontext.cpp
+new file mode 100644
+index 000000000..098493606
+--- /dev/null
++++ b/windows/dragcontext.cpp
+@@ -0,0 +1,132 @@
++#include "uipriv_windows.hpp"
++#include "dragcontext.hpp"
++
++int uiprivDropEffectsToDragOperations(DWORD de)
++{
++	int ops = uiDragOperationNone;
++
++	if (de & DROPEFFECT_COPY)
++		ops |= uiDragOperationCopy;
++	if (de & DROPEFFECT_LINK)
++		ops |= uiDragOperationLink;
++	if (de & DROPEFFECT_MOVE)
++		ops |= uiDragOperationMove;
++
++	return ops;
++}
++
++void uiDragContextPosition(uiDragContext *dc, int *x, int *y)
++{
++	POINT pt = { dc->pt.x, dc->pt.y };
++
++	ScreenToClient(dc->hwnd, &pt);
++	*x = pt.x;
++	*y = pt.y;
++}
++
++int uiDragContextDragTypes(uiDragContext *dc)
++{
++	int types = 0;
++	ULONG n;
++	FORMATETC fmtetc;
++	IEnumFORMATETC *pefmtetc = NULL;
++
++	// TODO see why this never triggers onMove()
++	if (dc->pDataObj == NULL) {
++		uiprivUserBug("You called uiDragContextDragTypes() from an illegal context");
++		return 0;
++	}
++
++	if (dc->pDataObj->EnumFormatEtc(DATADIR_GET, &pefmtetc) == S_OK && pefmtetc != NULL) {
++		while (pefmtetc->Next(1, &fmtetc, &n) == S_OK) {
++			switch (fmtetc.cfFormat) {
++				case CF_HDROP:
++					types |= uiDragTypeURIs;
++					break;
++				case CF_UNICODETEXT:
++				case CF_TEXT:
++					types |= uiDragTypeText;
++					break;
++			}
++		}
++		pefmtetc->Release();
++	}
++
++	return types;
++}
++
++int uiDragContextDragOperations(uiDragContext *dc)
++{
++	return uiprivDropEffectsToDragOperations(*(dc->pdwEffect));
++}
++
++uiDragData* uiDragContextDragData(uiDragContext *dc, uiDragType type)
++{
++	FORMATETC fmtetc;
++	STGMEDIUM medium;
++	IDataObject* pDataObj = dc->pDataObj;
++	uiDragData *d = NULL;
++
++	if (!(dc->dd->typeMask & type)) {
++		printf("ERROR: requesting unsupported drag type %d\n", type);
++		return NULL;
++	}
++
++	switch (type) {
++	case uiDragTypeURIs:
++		{
++			fmtetc = {CF_HDROP, NULL, DVASPECT_CONTENT, -1, TYMED_HGLOBAL};
++			medium = {};
++			if(pDataObj->GetData(&fmtetc, &medium) == S_OK) {
++				HDROP hDrop = (HDROP)medium.hGlobal;
++
++				d = uiprivNew(uiDragData);
++				d->type = uiDragTypeURIs;
++				d->data.URIs.numURIs = DragQueryFile(hDrop, (UINT)-1, NULL, 0);
++				if (d->data.URIs.numURIs == 0)
++					d->data.URIs.URIs = NULL;
++				else
++					d->data.URIs.URIs = (char**)uiprivAlloc(d->data.URIs.numURIs * sizeof(*d->data.URIs.URIs), "uiDragData->data.URIs.URIs");
++
++				for (int i=0; i < d->data.URIs.numURIs; ++i) {
++					WCHAR szName[MAX_PATH];
++
++					DragQueryFile(hDrop, i, szName, MAX_PATH);
++					d->data.URIs.URIs[i] = toUTF8(szName);
++				}
++			}
++		}
++		break;
++	case uiDragTypeText:
++		{
++			fmtetc = {CF_UNICODETEXT, NULL, DVASPECT_CONTENT, -1, TYMED_HGLOBAL};
++			medium = {};
++			if(pDataObj->GetData(&fmtetc, &medium) == S_OK) {
++				void *data;
++
++				d = uiprivNew(uiDragData);
++				d->type = uiDragTypeText;
++				data = GlobalLock(medium.hGlobal);
++				d->data.text = toUTF8((WCHAR*)data);
++				GlobalUnlock(data);
++				break;
++			}
++
++			fmtetc = {CF_TEXT, NULL, DVASPECT_CONTENT, -1, TYMED_HGLOBAL};
++			medium = {};
++			if(pDataObj->GetData(&fmtetc, &medium) == S_OK) {
++				void *data;
++
++				d = uiprivNew(uiDragData);
++				d->type = uiDragTypeText;
++				data = GlobalLock(medium.hGlobal);
++				d->data.text = strdup((char*)data);
++				GlobalUnlock(data);
++			}
++		}
++		break;
++	}
++
++	return d;
++}
++
+diff --git a/windows/dragcontext.hpp b/windows/dragcontext.hpp
+new file mode 100644
+index 000000000..328e8e774
+--- /dev/null
++++ b/windows/dragcontext.hpp
+@@ -0,0 +1,13 @@
++#ifndef __LIBUI_DRAGCONTEXT_HPP__
++#define __LIBUI_DRAGCONTEXT_HPP__
++
++struct uiDragContext {
++	uiDragDestination *dd;
++	HWND hwnd;
++	POINTL pt;
++	DWORD *pdwEffect;
++	IDataObject *pDataObj;
++};
++
++#endif
++
+diff --git a/windows/dragdata.cpp b/windows/dragdata.cpp
+new file mode 100644
+index 000000000..f811fe009
+--- /dev/null
++++ b/windows/dragdata.cpp
+@@ -0,0 +1,20 @@
++#include "uipriv_windows.hpp"
++
++void uiFreeDragData(uiDragData *d)
++{
++	int i;
++
++	switch (d->type) {
++		case uiDragTypeText:
++			uiFreeText(d->data.text);
++			break;
++		case uiDragTypeURIs:
++			for (i = 0; i < d->data.URIs.numURIs; ++i)
++				uiFreeText(d->data.URIs.URIs[i]);
++			if (d->data.URIs.URIs != NULL)
++				uiprivFree(d->data.URIs.URIs);
++			break;
++	}
++	uiprivFree(d);
++}
++
+diff --git a/windows/droptarget.cpp b/windows/droptarget.cpp
+new file mode 100644
+index 000000000..222f98c4d
+--- /dev/null
++++ b/windows/droptarget.cpp
+@@ -0,0 +1,130 @@
++#include "uipriv_windows.hpp"
++#include "dragcontext.hpp"
++#include "droptarget.hpp"
++#include <shlobj.h>
++
++static DWORD dragOperationToDropEffect(uiDragOperation op)
++{
++	switch (op) {
++		case uiDragOperationNone:
++			return DROPEFFECT_NONE;
++		case uiDragOperationCopy:
++			return DROPEFFECT_COPY;
++		case uiDragOperationLink:
++			return DROPEFFECT_LINK;
++		case uiDragOperationMove:
++			return DROPEFFECT_MOVE;
++	}
++	return DROPEFFECT_NONE;
++}
++
++uiDropTarget::uiDropTarget(uiDragDestination *dragDest, HWND hwnd)
++{
++	m_DragDest = dragDest;
++	m_HWND = hwnd;
++	m_Ref = 1;
++}
++
++uiDropTarget::~uiDropTarget()
++{
++}
++
++STDMETHODIMP uiDropTarget::QueryInterface(REFIID riid, LPVOID *ppv)
++{
++	if(ppv == NULL)
++		return E_POINTER;
++
++	if (riid == IID_IUnknown || riid == IID_IDropTarget) {
++		*ppv = this;
++		AddRef();
++		return S_OK;
++	}
++
++	*ppv = NULL;
++	return E_NOINTERFACE;
++}
++
++STDMETHODIMP_(ULONG) uiDropTarget::AddRef()
++{
++	return ++m_Ref;
++}
++
++STDMETHODIMP_(ULONG) uiDropTarget::Release()
++{
++	if (--m_Ref == 0) {
++		delete this;
++	}
++	return m_Ref;
++}
++
++bool uiDropTarget::AcceptData(IDataObject* pDataObj)
++{
++	FORMATETC fmtetc;
++	bool accept = false;
++
++	if (m_DragDest->typeMask & uiDragTypeText) {
++		fmtetc = {CF_TEXT, NULL, DVASPECT_CONTENT, -1, TYMED_HGLOBAL};
++		if (pDataObj->QueryGetData(&fmtetc) == S_OK)
++			accept = true;
++		fmtetc = {CF_UNICODETEXT, NULL, DVASPECT_CONTENT, -1, TYMED_HGLOBAL};
++		if (pDataObj->QueryGetData(&fmtetc) == S_OK)
++			accept = true;
++	}
++	if (m_DragDest->typeMask & uiDragTypeURIs) {
++		fmtetc = {CF_HDROP, NULL, DVASPECT_CONTENT, -1, TYMED_HGLOBAL};
++		if (pDataObj->QueryGetData(&fmtetc) == S_OK)
++			accept = true;
++	}
++
++	return accept;
++}
++
++STDMETHODIMP uiDropTarget::DragEnter(IDataObject* pDataObj, DWORD grfKeyState, POINTL pt, DWORD* pdwEffect)
++{
++	struct uiDragContext context = { m_DragDest, m_HWND, pt, pdwEffect, pDataObj };
++
++	if (!AcceptData(pDataObj)) {
++		*pdwEffect = DROPEFFECT_NONE;
++		return E_INVALIDARG;
++	}
++
++	// Cache data object for use in ::DragOver which is legal according to:
++	// https://learn.microsoft.com/en-us/windows/win32/api/oleidl/nf-oleidl-idroptarget-dragover
++	m_DataObj = pDataObj;
++
++	m_DragDest->op = uiDragOperationNone;
++	m_DragDest->op = m_DragDest->onEnter(m_DragDest, &context, m_DragDest->onEnterData);
++
++	*pdwEffect = dragOperationToDropEffect(m_DragDest->op);
++	return S_OK;
++}
++
++STDMETHODIMP uiDropTarget::DragOver(DWORD grfKeyState, POINTL pt, DWORD* pdwEffect)
++{
++	struct uiDragContext context = { m_DragDest, m_HWND, pt, pdwEffect, m_DataObj };
++
++	m_DragDest->op = m_DragDest->onMove(m_DragDest, &context, m_DragDest->onMoveData);
++
++	*pdwEffect = dragOperationToDropEffect(m_DragDest->op);
++	return S_OK;
++}
++
++STDMETHODIMP uiDropTarget::DragLeave()
++{
++	m_DragDest->onExit(m_DragDest, m_DragDest->onExitData);
++	return S_OK;
++}
++
++STDMETHODIMP uiDropTarget::Drop(IDataObject* pDataObj, DWORD grfKeyState, POINTL pt, DWORD* pdwEffect)
++{
++	int success;
++	struct uiDragContext context = { m_DragDest, m_HWND, pt, pdwEffect, pDataObj };
++
++	success = m_DragDest->onDrop(m_DragDest, &context, m_DragDest->onDropData);
++	if (!success)
++		m_DragDest->op = uiDragOperationNone;
++
++	*pdwEffect = dragOperationToDropEffect(m_DragDest->op);
++	return S_OK;
++}
++
+diff --git a/windows/droptarget.hpp b/windows/droptarget.hpp
+new file mode 100644
+index 000000000..c5254f169
+--- /dev/null
++++ b/windows/droptarget.hpp
+@@ -0,0 +1,34 @@
++#ifndef __LIBUI_DROPTARGET_HPP
++#define __LIBUI_DROPTARGET_HPP
++
++#include <ole2.h>
++
++class uiDropTarget : public IDropTarget
++{
++	public:
++		uiDropTarget(uiDragDestination *dragDest, HWND hwnd);
++		virtual ~uiDropTarget();
++
++		//IUnknown
++		STDMETHODIMP QueryInterface(REFIID riid, void** ppvObject);
++		STDMETHODIMP_(ULONG) AddRef();
++		STDMETHODIMP_(ULONG) Release();
++
++		//IDropTarget
++		STDMETHODIMP DragEnter(IDataObject* pDataObj, DWORD grfKeyState, POINTL pt, DWORD* pdwEffect);
++		STDMETHODIMP DragOver(DWORD grfKeyState, POINTL pt, DWORD* pdwEffect);
++		STDMETHODIMP DragLeave();
++		STDMETHODIMP Drop(IDataObject* pDataObj, DWORD grfKeyState, POINTL pt, DWORD* pdwEffect);
++
++	private:
++		bool AcceptData(IDataObject* pDataObj);
++		//Data
++		uiDragDestination *m_DragDest;
++		HWND m_HWND;
++		IDataObject *m_DataObj;
++
++		//IUnknown
++		ULONG m_Ref;
++};
++
++#endif
+diff --git a/windows/init.cpp b/windows/init.cpp
+index 021ebaa38..31389056b 100644
+--- a/windows/init.cpp
++++ b/windows/init.cpp
+@@ -102,6 +102,9 @@ const char *uiInit(uiInitOptions *o)
+ 	if (hollowBrush == NULL)
+ 		return ieLastErr("getting hollow brush");
+ 
++	// Drag and Drop
++	OleInitialize(NULL);
++
+ 	ZeroMemory(&icc, sizeof (INITCOMMONCONTROLSEX));
+ 	icc.dwSize = sizeof (INITCOMMONCONTROLSEX);
+ 	icc.dwICC = wantedICCClasses;
+@@ -149,6 +152,7 @@ void uiUninit(void)
+ 	uiprivUninitDrawText();
+ 	uninitDraw();
+ 	CoUninitialize();
++	OleUninitialize();
+ 	if (DeleteObject(hollowBrush) == 0)
+ 		logLastError(L"error freeing hollow brush");
+ 	uninitContainer();
+diff --git a/windows/meson.build b/windows/meson.build
+index 80c7bd82f..236aafc07 100644
+--- a/windows/meson.build
++++ b/windows/meson.build
+@@ -21,10 +21,13 @@ libui_sources += [
+ 	'windows/d2dscratch.cpp',
+ 	'windows/datetimepicker.cpp',
+ 	'windows/debug.cpp',
++	'windows/dragcontext.cpp',
++	'windows/dragdata.cpp',
+ 	'windows/draw.cpp',
+ 	'windows/drawmatrix.cpp',
+ 	'windows/drawpath.cpp',
+ 	'windows/drawtext.cpp',
++	'windows/droptarget.cpp',
+ 	'windows/dwrite.cpp',
+ 	'windows/editablecombo.cpp',
+ 	'windows/entry.cpp',
+@@ -79,7 +82,7 @@ if libui_mode == 'shared'
+ endif
+ 
+ # TODO prune this list
+-foreach lib : ['user32', 'kernel32', 'gdi32', 'comctl32', 'uxtheme', 'msimg32', 'comdlg32', 'd2d1', 'dwrite', 'ole32', 'oleaut32', 'oleacc', 'uuid', 'windowscodecs']
++foreach lib : ['user32', 'kernel32', 'gdi32', 'comctl32', 'uxtheme', 'msimg32', 'comdlg32', 'd2d1', 'dwrite', 'ole32', 'oleaut32', 'oleacc', 'uuid', 'windowscodecs', 'shell32']
+ 	libui_deps += [
+ 		meson.get_compiler('cpp').find_library(lib,
+ 			required: true),
+diff --git a/windows/uipriv_windows.hpp b/windows/uipriv_windows.hpp
+index d3c1e413a..556a39cbd 100644
+--- a/windows/uipriv_windows.hpp
++++ b/windows/uipriv_windows.hpp
+@@ -174,5 +174,8 @@ extern void uiprivUninitImage(void);
+ extern IWICBitmap *uiprivImageAppropriateForDC(uiImage *i, HDC dc);
+ extern HRESULT uiprivWICToGDI(IWICBitmap *b, HDC dc, int width, int height, HBITMAP *hb);
+ 
++// dragcontext.cpp
++extern int uiprivDropEffectsToDragOperations(DWORD de);
++
+ #endif
+ 

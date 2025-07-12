@@ -13,7 +13,7 @@ int extern_win_init(HICON hDefaultIcon, HCURSOR hDefaultCursor) {
 	// 	puts("registering uiScroll window class");
 	// 	return 1;
 	// }
-#if 1
+#if 0
 	// Set DPI awareness
 	typedef void* fl_DPI_AWARENESS_CONTEXT;
 	typedef BOOL(WINAPI* SetProcessDpiAwarenessContext_type)(fl_DPI_AWARENESS_CONTEXT);

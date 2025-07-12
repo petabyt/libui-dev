@@ -14,3 +14,7 @@ void uiprivDisableAutocorrect(NSTextView *tv)
 	[tv setAutomaticLinkDetectionEnabled:NO];
 	[tv setSmartInsertDeleteEnabled:NO];
 }
+
+void uiSetAppMetadata(const char *name, const char *version, const char *package) {
+	// ...
+}

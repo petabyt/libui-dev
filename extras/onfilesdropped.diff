@@ -1,0 +1,650 @@
+diff --git a/darwin/entry.m b/darwin/entry.m
+index 7b2358e55..78737e869 100644
+--- a/darwin/entry.m
++++ b/darwin/entry.m
+@@ -18,6 +18,37 @@ - (NSSize)intrinsicContentSize
+ 	return s;
+ }
+ 
++- (NSDragOperation)draggingEntered:(id)sender
++{
++	if ( [[[sender draggingPasteboard] types] containsObject:NSFilenamesPboardType] ) {
++		return NSDragOperationCopy;
++	}
++	return NSDragOperationNone;
++}
++
++- (NSDragOperation)draggingUpdated:(id)sender
++{
++	if ( [[[sender draggingPasteboard] types] containsObject:NSFilenamesPboardType] ) {
++		return NSDragOperationCopy;
++	}
++	return NSDragOperationNone;
++}
++
++- (BOOL)prepareForDragOperation:(id)sender
++{
++	return YES;
++}
++
++-(BOOL)performDragOperation:(id<NSDraggingInfo>)sender
++{
++	return YES;
++}
++
++-(void)concludeDragOperation:(id<NSDraggingInfo>)sender
++{
++	[self.delegate onFilesDropped:sender];
++}
++
+ @end
+ 
+ // TODO does this have one on its own?
+@@ -35,6 +66,37 @@ - (NSSize)intrinsicContentSize
+ 	return s;
+ }
+ 
++- (NSDragOperation)draggingEntered:(id)sender
++{
++	if ( [[[sender draggingPasteboard] types] containsObject:NSFilenamesPboardType] ) {
++		return NSDragOperationCopy;
++	}
++	return NSDragOperationNone;
++}
++
++- (NSDragOperation)draggingUpdated:(id)sender
++{
++	if ( [[[sender draggingPasteboard] types] containsObject:NSFilenamesPboardType] ) {
++		return NSDragOperationCopy;
++	}
++	return NSDragOperationNone;
++}
++
++- (BOOL)prepareForDragOperation:(id)sender
++{
++	return YES;
++}
++
++-(BOOL)performDragOperation:(id<NSDraggingInfo>)sender
++{
++	return YES;
++}
++
++-(void)concludeDragOperation:(id<NSDraggingInfo>)sender
++{
++	[self.delegate onFilesDropped:sender];
++}
++
+ @end
+ 
+ // TODO does this have one on its own?
+@@ -52,6 +114,37 @@ - (NSSize)intrinsicContentSize
+ 	return s;
+ }
+ 
++- (NSDragOperation)draggingEntered:(id)sender
++{
++	if ( [[[sender draggingPasteboard] types] containsObject:NSFilenamesPboardType] ) {
++		return NSDragOperationCopy;
++	}
++	return NSDragOperationNone;
++}
++
++- (NSDragOperation)draggingUpdated:(id)sender
++{
++	if ( [[[sender draggingPasteboard] types] containsObject:NSFilenamesPboardType] ) {
++		return NSDragOperationCopy;
++	}
++	return NSDragOperationNone;
++}
++
++- (BOOL)prepareForDragOperation:(id)sender
++{
++	return YES;
++}
++
++-(BOOL)performDragOperation:(id<NSDraggingInfo>)sender
++{
++	return YES;
++}
++
++-(void)concludeDragOperation:(id<NSDraggingInfo>)sender
++{
++	[self.delegate onFilesDropped:sender];
++}
++
+ @end
+ 
+ struct uiEntry {
+@@ -59,6 +152,9 @@ - (NSSize)intrinsicContentSize
+ 	NSTextField *textfield;
+ 	void (*onChanged)(uiEntry *, void *);
+ 	void *onChangedData;
++	void (*onFilesDropped)(uiEntry *, int, char**, void *);
++	void *onFilesDroppedData;
++	int acceptDrops;
+ };
+ 
+ static BOOL isSearchField(NSTextField *tf)
+@@ -72,6 +168,7 @@ @interface uiprivEntryDelegate : NSObject<NSTextFieldDelegate> {
+ - (id)initWithEntry:(uiEntry *)e;
+ - (void)controlTextDidChange:(NSNotification *)notification;
+ - (IBAction)onChanged:(id)sender;
++- (void)onFilesDropped:(id <NSDraggingInfo>)sender;
+ @end
+ 
+ @implementation uiprivEntryDelegate
+@@ -96,6 +193,38 @@ - (IBAction)onChanged:(id)sender
+ 	(*(e->onChanged))(e, e->onChangedData);
+ }
+ 
++- (void)onFilesDropped:(id <NSDraggingInfo>)sender
++{
++	NSPasteboard *pboard = [sender draggingPasteboard];
++	if ( ![[pboard types] containsObject:NSFilenamesPboardType] )
++		return;
++	NSArray *files = [pboard propertyListForType:NSFilenamesPboardType];
++	int count = [files count];
++	if (count == 0)
++		return;
++
++	char** names = (char**)uiprivAlloc((count + 1) * sizeof(char*), "char*[] names");
++	char** start = names;
++	for (int i = 0; i < count; i++) {
++		NSString *nsfile = [files objectAtIndex:i];
++		int size = [nsfile lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
++		*names = (char*)uiprivAlloc((size + 1) * sizeof(char), "char[] name");
++		strcpy(*names, [nsfile UTF8String]);
++		names++;
++	}
++
++	uiEntry *e = self->entry;
++	(*(e->onFilesDropped))(e, count, start, e->onFilesDroppedData);
++
++	names = start;
++	for (int i = 0; i < count; i++) {
++		uiprivFree(*names);
++		names++;
++	}
++
++	uiprivFree(start);
++}
++
+ @end
+ 
+ uiDarwinControlAllDefaultsExceptDestroy(uiEntry, textfield)
+@@ -135,6 +264,12 @@ void uiEntryOnChanged(uiEntry *e, void (*f)(uiEntry *, void *), void *data)
+ 	e->onChangedData = data;
+ }
+ 
++void uiEntryOnFilesDropped(uiEntry *e, void (*f)(uiEntry *, int, char**, void *), void *data)
++{
++	e->onFilesDropped = f;
++	e->onFilesDroppedData = data;
++}
++
+ int uiEntryReadOnly(uiEntry *e)
+ {
+ 	return [e->textfield isEditable] == NO;
+@@ -150,11 +285,30 @@ void uiEntrySetReadOnly(uiEntry *e, int readonly)
+ 	[e->textfield setEditable:editable];
+ }
+ 
++int uiEntryAcceptDrops(uiEntry *e)
++{
++	return e->acceptDrops;
++}
++
++void uiEntrySetAcceptDrops(uiEntry *e, int accept)
++{
++	e->acceptDrops = accept != 0;
++	if (accept)
++		[e->textfield registerForDraggedTypes:[NSArray arrayWithObjects: NSFilenamesPboardType, nil]];
++	else
++		[e->textfield registerForDraggedTypes:nil];
++}
++
+ static void defaultOnChanged(uiEntry *e, void *data)
+ {
+ 	// do nothing
+ }
+ 
++static void defaultOnFilesDropped(uiEntry *e, int count, char** files, void *data)
++{
++	// do nothing
++}
++
+ static NSTextField *realNewEditableTextField(Class class)
+ {
+ 	NSTextField *tf;
+@@ -187,6 +341,7 @@ static void defaultOnChanged(uiEntry *e, void *data)
+ 	}
+ 
+ 	uiEntryOnChanged(e, defaultOnChanged, NULL);
++	uiEntryOnFilesDropped(e, defaultOnFilesDropped, NULL);
+ 
+ 	return e;
+ }
+diff --git a/ui.h b/ui.h
+index f7a9e610e..3e1304776 100644
+--- a/ui.h
++++ b/ui.h
+@@ -794,6 +794,23 @@ _UI_EXTERN void uiEntrySetText(uiEntry *e, const char *text);
+ _UI_EXTERN void uiEntryOnChanged(uiEntry *e,
+ 	void (*f)(uiEntry *sender, void *senderData), void *data);
+ 
++/**
++ * Registers a callback for when the user drops files on the entry.
++ *
++ * @param e uiEntry instance.
++ * @param f Callback function.\n
++ *          @p sender Back reference to the instance that initiated the callback.\n
++ *          @p filenCount Number of the dropped files.\n
++ *          @p fileNames Paths to the dropped files.\n
++ *          @p senderData User data registered with the sender instance.\n
++ * @param data User data to be passed to the callback.
++ *
++ * @note The callback is not triggered when not calling uiEntryDragAcceptFiles().
++ * @memberof uiEntry
++ */
++_UI_EXTERN void uiEntryOnFilesDropped(uiEntry *e,
++	void (*f)(uiEntry *sender, int fileCount, char** fileNames, void *senderData), void *data);
++
+ /**
+  * Returns whether or not the entry's text can be changed.
+  *
+@@ -812,6 +829,24 @@ _UI_EXTERN int uiEntryReadOnly(uiEntry *e);
+  */
+ _UI_EXTERN void uiEntrySetReadOnly(uiEntry *e, int readonly);
+ 
++/**
++ * Returns whether or not the entry will accept dropped files.
++ *
++ * @param e uiEntry instance.
++ * @returns `TRUE` if accept dropped files, `FALSE` otherwise. [Default: `FALSE`]
++ * @memberof uiEntry
++ */
++_UI_EXTERN int uiEntryAcceptDrops(uiEntry *e);
++
++/**
++ * Sets whether or not the entry will accept dropped files.
++ *
++ * @param e uiEntry instance.
++ * @param accept `TRUE` to accept dropped files, `FALSE` otherwise.
++ * @memberof uiEntry
++ */
++_UI_EXTERN void uiEntrySetAcceptDrops(uiEntry *e, int accept);
++
+ /**
+  * Creates a new entry.
+  *
+diff --git a/ui_windows.h b/ui_windows.h
+index 9e472451c..8b28a4e85 100644
+--- a/ui_windows.h
++++ b/ui_windows.h
+@@ -230,6 +230,10 @@ _UI_EXTERN void uiWindowsUnregisterWM_NOTIFYHandler(HWND hwnd);
+ _UI_EXTERN void uiWindowsRegisterWM_HSCROLLHandler(HWND hwnd, BOOL (*handler)(uiControl *, HWND, WORD, LRESULT *), uiControl *c);
+ _UI_EXTERN void uiWindowsUnregisterWM_HSCROLLHandler(HWND hwnd);
+ 
++// TODO document
++_UI_EXTERN void uiWindowsRegisterWM_DROPFILESHandler(HWND hwnd, BOOL (*handler)(uiControl *, HWND, HDROP, LRESULT *), uiControl *c);
++_UI_EXTERN void uiWindowsUnregisterWM_DROPFILESHandler(HWND hwnd);
++
+ // TODO document
+ _UI_EXTERN void uiWindowsRegisterReceiveWM_WININICHANGE(HWND hwnd);
+ _UI_EXTERN void uiWindowsUnregisterReceiveWM_WININICHANGE(HWND hwnd);
+diff --git a/unix/entry.c b/unix/entry.c
+index 4a9a1d041..bc0f7bf24 100644
+--- a/unix/entry.c
++++ b/unix/entry.c
+@@ -9,6 +9,9 @@ struct uiEntry {
+ 	void (*onChanged)(uiEntry *, void *);
+ 	void *onChangedData;
+ 	gulong onChangedSignal;
++	void (*onFilesDropped)(uiEntry *, int, char**, void *);
++	void *onFilesDroppedData;
++	guint onFilesDroppedTime;
+ };
+ 
+ uiUnixControlAllDefaults(uiEntry)
+@@ -20,11 +23,73 @@ static void onChanged(GtkEditable *editable, gpointer data)
+ 	(*(e->onChanged))(e, e->onChangedData);
+ }
+ 
++static void onFilesDropped(GtkEditable *editable,
++							GdkDragContext *context,
++							gint x,
++							gint y,
++							GtkSelectionData *data,
++							guint info,
++							guint time,
++							gpointer user_data)
++{
++	uiEntry *e = uiEntry(user_data);
++
++	if (gtk_selection_data_get_length(data) == 0 ||
++		gtk_selection_data_get_format(data) != 8 ||
++		e->onFilesDroppedTime == time) {
++		gtk_drag_finish(context, FALSE, FALSE, time);
++		return;
++	}
++
++	// Need to check the 'time' parameter cause callbacks can be called twice.
++	e->onFilesDroppedTime = time;
++
++	gchar **uris;
++	gchar **files;
++	gchar *hostname;
++	GError *error = NULL;
++	gint i;
++
++	uris = gtk_selection_data_get_uris(data);
++	if (uris == NULL) {
++		gtk_drag_finish(context, FALSE, FALSE, time);
++		return;
++	}
++
++	for (i = 0; uris[i] != NULL; i++) ;
++	files = g_new0(gchar *, i + 1);
++	int count = i;
++
++	for (i = 0; uris[i] != NULL; i++) {
++		files[i] = g_filename_from_uri(uris[i], &hostname, &error);
++		if (files[i] == NULL) {
++			g_clear_error(&error);
++			g_free(hostname);
++			g_strfreev(files);
++			g_strfreev(uris);
++			gtk_drag_finish(context, FALSE, FALSE, time);
++			return;
++		}
++		g_free(hostname);
++	}
++	g_strfreev(uris);
++
++	(*(e->onFilesDropped))(e, count, files, e->onFilesDroppedData);
++	g_strfreev(files);
++
++	gtk_drag_finish(context, TRUE, TRUE, time);
++}
++
+ static void defaultOnChanged(uiEntry *e, void *data)
+ {
+ 	// do nothing
+ }
+ 
++static void defaultOnFilesDropped(uiEntry *e, int count, char** names, void *data)
++{
++	// do nothing
++}
++
+ char *uiEntryText(uiEntry *e)
+ {
+ 	return uiUnixStrdupText(gtk_entry_get_text(e->entry));
+@@ -45,6 +110,12 @@ void uiEntryOnChanged(uiEntry *e, void (*f)(uiEntry *, void *), void *data)
+ 	e->onChangedData = data;
+ }
+ 
++void uiEntryOnFilesDropped(uiEntry *e, void (*f)(uiEntry *, int, char**, void *), void *data)
++{
++	e->onFilesDropped = f;
++	e->onFilesDroppedData = data;
++}
++
+ int uiEntryReadOnly(uiEntry *e)
+ {
+ 	return gtk_editable_get_editable(e->editable) == FALSE;
+@@ -60,6 +131,27 @@ void uiEntrySetReadOnly(uiEntry *e, int readonly)
+ 	gtk_editable_set_editable(e->editable, editable);
+ }
+ 
++int uiEntryAcceptDrops(uiEntry *e)
++{
++	return gtk_drag_dest_get_target_list(e->widget) == NULL;
++}
++
++GtkTargetEntry drop_targets[] = { { "text/uri-list", 0, 10 } };
++
++void uiEntrySetAcceptDrops(uiEntry *e, int accept)
++{
++	if (accept) {
++		gtk_drag_dest_set(e->widget,
++						7,
++						drop_targets,
++						sizeof(drop_targets) / sizeof(drop_targets[0]),
++						GDK_ACTION_COPY);
++	} else {
++		gtk_drag_dest_set(e->widget, 7, NULL, 0, 0);
++	}
++}
++
++
+ static uiEntry *finishNewEntry(GtkWidget *w, const gchar *signal)
+ {
+ 	uiEntry *e;
+@@ -71,7 +163,9 @@ static uiEntry *finishNewEntry(GtkWidget *w, const gchar *signal)
+ 	e->editable = GTK_EDITABLE(e->widget);
+ 
+ 	e->onChangedSignal = g_signal_connect(e->widget, signal, G_CALLBACK(onChanged), e);
++	g_signal_connect(e->widget, "drag-data-received", G_CALLBACK(onFilesDropped), e);
+ 	uiEntryOnChanged(e, defaultOnChanged, NULL);
++	uiEntryOnChanged(e, defaultOnFilesDropped, NULL);
+ 
+ 	return e;
+ }
+diff --git a/windows/entry.cpp b/windows/entry.cpp
+index cb6913082..cbb410784 100644
+--- a/windows/entry.cpp
++++ b/windows/entry.cpp
+@@ -7,6 +7,9 @@ struct uiEntry {
+ 	void (*onChanged)(uiEntry *, void *);
+ 	void *onChangedData;
+ 	BOOL inhibitChanged;
++	void (*onFilesDropped)(uiEntry *, int, char**, void *);
++	void *onFilesDroppedData;
++	int acceptDrops;
+ };
+ 
+ static BOOL onWM_COMMAND(uiControl *c, HWND hwnd, WORD code, LRESULT *lResult)
+@@ -22,11 +25,43 @@ static BOOL onWM_COMMAND(uiControl *c, HWND hwnd, WORD code, LRESULT *lResult)
+ 	return TRUE;
+ }
+ 
++static BOOL onWM_DROPFILES(uiControl *c, HWND hwnd, HDROP hdrop, LRESULT *lResult)
++{
++	uiEntry *e = uiEntry(c);
++
++	int count = DragQueryFile(hdrop, -1, NULL, 0);
++
++	char** names = (char**)uiprivAlloc((count + 1) * sizeof(char*), "char*[] names");
++	char** start = names;
++	wchar_t* file;
++	for (int i = 0; i < count; i++) {
++		size_t size = DragQueryFile(hdrop, i, NULL, 0);
++		file = (wchar_t*)uiprivAlloc((size + 1) * sizeof(wchar_t), "wchar_t[] file");
++		DragQueryFile(hdrop, i, file, size + 1);
++		*names = toUTF8(file);
++		uiprivFree(file);
++		names++;
++	}
++	DragFinish(hdrop);
++
++	(*(e->onFilesDropped))(e, count, start, e->onFilesDroppedData);
++
++	names = start;
++	for (int i = 0; i < count; i++) {
++		uiprivFree(*names);
++		names++;
++	}
++	uiprivFree(start);
++	*lResult = 0;
++	return TRUE;
++}
++
+ static void uiEntryDestroy(uiControl *c)
+ {
+ 	uiEntry *e = uiEntry(c);
+ 
+ 	uiWindowsUnregisterWM_COMMANDHandler(e->hwnd);
++	uiWindowsUnregisterWM_DROPFILESHandler(e->hwnd);
+ 	uiWindowsEnsureDestroyWindow(e->hwnd);
+ 	uiFreeControl(uiControl(e));
+ }
+@@ -56,6 +91,11 @@ static void defaultOnChanged(uiEntry *e, void *data)
+ 	// do nothing
+ }
+ 
++static void defaultOnFilesDropped(uiEntry *e, int count, char** names, void *data)
++{
++	// do nothing
++}
++
+ char *uiEntryText(uiEntry *e)
+ {
+ 	return uiWindowsWindowText(e->hwnd);
+@@ -79,6 +119,12 @@ void uiEntryOnChanged(uiEntry *e, void (*f)(uiEntry *, void *), void *data)
+ 	e->onChangedData = data;
+ }
+ 
++void uiEntryOnFilesDropped(uiEntry *e, void (*f)(uiEntry *, int, char**, void *), void *data)
++{
++	e->onFilesDropped = f;
++	e->onFilesDroppedData = data;
++}
++
+ int uiEntryReadOnly(uiEntry *e)
+ {
+ 	return (getStyle(e->hwnd) & ES_READONLY) != 0;
+@@ -90,6 +136,34 @@ void uiEntrySetReadOnly(uiEntry *e, int readonly)
+ 		logLastError(L"error setting uiEntry read-only state");
+ }
+ 
++int uiEntryAcceptDrops(uiEntry *e)
++{
++	return e->acceptDrops;
++}
++
++void uiEntrySetAcceptDrops(uiEntry * e, int accept)
++{
++	e->acceptDrops = accept != 0;
++	DragAcceptFiles(e->hwnd, accept);
++}
++
++WNDPROC entryProcDefault = 0;
++
++static LRESULT CALLBACK entryWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
++{
++	LRESULT lResult;
++
++	switch (uMsg) {
++	case WM_DROPFILES:
++		return runWM_DROPFILES(wParam, (LPARAM)hwnd, &lResult);
++		break;
++	default:
++		return CallWindowProcW(entryProcDefault, hwnd, uMsg, wParam, lParam);
++		break;
++	}
++	return DefWindowProcW(hwnd, uMsg, wParam, lParam);
++}
++
+ static uiEntry *finishNewEntry(DWORD style)
+ {
+ 	uiEntry *e;
+@@ -102,8 +176,13 @@ static uiEntry *finishNewEntry(DWORD style)
+ 		hInstance, NULL,
+ 		TRUE);
+ 
++	entryProcDefault = (WNDPROC)GetWindowLongPtr(e->hwnd, GWLP_WNDPROC);
++	SetWindowLongPtr(e->hwnd, GWLP_WNDPROC, (LONG_PTR)entryWndProc);
++
+ 	uiWindowsRegisterWM_COMMANDHandler(e->hwnd, onWM_COMMAND, uiControl(e));
++	uiWindowsRegisterWM_DROPFILESHandler(e->hwnd, onWM_DROPFILES, uiControl(e));
+ 	uiEntryOnChanged(e, defaultOnChanged, NULL);
++	uiEntryOnFilesDropped(e, defaultOnFilesDropped, NULL);
+ 
+ 	return e;
+ }
+diff --git a/windows/events.cpp b/windows/events.cpp
+index c097ae4ae..cf5ff9bb6 100644
+--- a/windows/events.cpp
++++ b/windows/events.cpp
+@@ -5,6 +5,7 @@ struct handler {
+ 	BOOL (*commandHandler)(uiControl *, HWND, WORD, LRESULT *);
+ 	BOOL (*notifyHandler)(uiControl *, HWND, NMHDR *, LRESULT *);
+ 	BOOL (*hscrollHandler)(uiControl *, HWND, WORD, LRESULT *);
++	BOOL (*dropHandler)(uiControl *, HWND, HDROP, LRESULT *);
+ 	uiControl *c;
+ 
+ 	// just to ensure handlers[new HWND] initializes properly
+@@ -14,6 +15,7 @@ struct handler {
+ 		this->commandHandler = NULL;
+ 		this->notifyHandler = NULL;
+ 		this->hscrollHandler = NULL;
++		this->dropHandler = NULL;
+ 		this->c = NULL;
+ 	}
+ };
+@@ -44,6 +46,14 @@ void uiWindowsRegisterWM_HSCROLLHandler(HWND hwnd, BOOL (*handler)(uiControl *,
+ 	handlers[hwnd].c = c;
+ }
+ 
++void uiWindowsRegisterWM_DROPFILESHandler(HWND hwnd, BOOL (*handler)(uiControl *, HWND, HDROP, LRESULT *), uiControl *c)
++{
++	if (handlers[hwnd].dropHandler != NULL)
++		uiprivImplBug("already registered a WM_DROPFILES handler to window handle %p", hwnd);
++	handlers[hwnd].dropHandler = handler;
++	handlers[hwnd].c = c;
++}
++
+ void uiWindowsUnregisterWM_COMMANDHandler(HWND hwnd)
+ {
+ 	if (handlers[hwnd].commandHandler == NULL)
+@@ -65,6 +75,13 @@ void uiWindowsUnregisterWM_HSCROLLHandler(HWND hwnd)
+ 	handlers[hwnd].hscrollHandler = NULL;
+ }
+ 
++void uiWindowsUnregisterWM_DROPFILESHandler(HWND hwnd)
++{
++	if (handlers[hwnd].dropHandler == NULL)
++		uiprivImplBug("window handle %p not registered to receive WM_DROPFILES events", hwnd);
++	handlers[hwnd].dropHandler = NULL;
++}
++
+ template<typename T>
+ static BOOL shouldRun(HWND hwnd, T method)
+ {
+@@ -126,6 +143,22 @@ BOOL runWM_HSCROLL(WPARAM wParam, LPARAM lParam, LRESULT *lResult)
+ 	return FALSE;
+ }
+ 
++BOOL runWM_DROPFILES(WPARAM wParam, LPARAM lParam, LRESULT *lResult)
++{
++	HWND hwnd;
++	HDROP hdrop;
++	BOOL (*handler)(uiControl *, HWND, HDROP, LRESULT *);
++	uiControl *c;
++
++	hwnd = (HWND) lParam;
++	hdrop = (HDROP) wParam;
++	handler = handlers[hwnd].dropHandler;
++	c = handlers[hwnd].c;
++	if (shouldRun(hwnd, handler))
++		return (*handler)(c, hwnd, hdrop, lResult);
++	return FALSE;
++}
++
+ static std::map<HWND, bool> wininichanges;
+ 
+ void uiWindowsRegisterReceiveWM_WININICHANGE(HWND hwnd)
+diff --git a/windows/uipriv_windows.hpp b/windows/uipriv_windows.hpp
+index d3c1e413a..f6e4150ed 100644
+--- a/windows/uipriv_windows.hpp
++++ b/windows/uipriv_windows.hpp
+@@ -28,6 +28,7 @@ extern void uninitAlloc(void);
+ extern BOOL runWM_COMMAND(WPARAM wParam, LPARAM lParam, LRESULT *lResult);
+ extern BOOL runWM_NOTIFY(WPARAM wParam, LPARAM lParam, LRESULT *lResult);
+ extern BOOL runWM_HSCROLL(WPARAM wParam, LPARAM lParam, LRESULT *lResult);
++extern BOOL runWM_DROPFILES(WPARAM wParam, LPARAM lParam, LRESULT *lResult);
+ extern void issueWM_WININICHANGE(WPARAM wParam, LPARAM lParam);
+ 
+ // utf16.cpp

@@ -152,3 +152,7 @@ D2D1_SIZE_F realGetSize(ID2D1RenderTarget *rt)
 	return size;
 #endif
 }
+
+void uiSetAppMetadata(const char *name, const char *version, const char *package) {
+	// ...
+}
