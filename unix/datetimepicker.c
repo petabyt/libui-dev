@@ -561,7 +561,20 @@ struct uiDateTimePicker {
 	gulong setBlock;
 };
 
-uiUnixControlAllDefaults(uiDateTimePicker)
+uiUnixControlAllDefaultsExceptDestroy(uiDateTimePicker)
+
+static void uiDateTimePickerDestroy(uiControl *c)
+{
+	uiDateTimePicker *d = uiDateTimePicker(c);
+
+	hidePopup(d->d);
+	if (d->setBlock != 0) {
+		g_signal_handler_disconnect(d->d, d->setBlock);
+		d->setBlock = 0;
+	}
+	g_object_unref(d->widget);
+	uiFreeControl(uiControl(d));
+}
 
 static void defaultOnChanged(uiDateTimePicker *d, void *data)
 {
