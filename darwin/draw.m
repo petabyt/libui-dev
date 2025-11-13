@@ -450,7 +450,23 @@ void uiDrawSave(uiDrawContext *c)
 	CGContextSaveGState(c->c);
 }
 
+uiDrawBitmap* uiDrawNewBitmap(uiDrawContext* c, int width, int height) {
+	uiprivUserBug("TODO: Implement uiDrawNewBitmap");
+}
+
 void uiDrawRestore(uiDrawContext *c)
 {
 	CGContextRestoreGState(c->c);
+}
+
+void uiDrawBitmapUpdate(uiDrawBitmap* bmp, const void* data) {
+	// ...
+}
+
+void uiDrawBitmapDraw(uiDrawContext* c, uiDrawBitmap* bmp, uiRect* srcrect, uiRect* dstrect, int filter) {
+	// ...
+}
+
+void uiDrawFreeBitmap(uiDrawBitmap* bmp) {
+	// ...
 }
