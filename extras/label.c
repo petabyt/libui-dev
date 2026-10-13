@@ -59,6 +59,12 @@ _UI_EXTERN void uiLabelSetAttribute(uiLabel *label, uiAttribute *attr)
 
 	PangoAttrList *old_list = gtk_label_get_attributes(GTK_LABEL(label->widget));
 
+	// A label without attributes returns NULL here; pango_attr_list_get_attributes() would abort.
+	if (old_list == NULL) {
+		gtk_label_set_attributes(GTK_LABEL(label->widget), pango_list);
+		return;
+	}
+
 	GSList *attr_list = pango_attr_list_get_attributes(old_list);
 
 	for (; attr_list != NULL; attr_list = attr_list->next) {

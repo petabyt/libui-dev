@@ -5,7 +5,7 @@ option(LIBUI_COMPILE_EXAMPLES "Compile example programs and tests" OFF)
 option(LIBUI_INCLUDE_INSTALL "Include install() declaration" OFF)
 option(LIBUI_COMPILE_GTK3 "Compile GTK3 on Linux" ON)
 option(LIBUI_COMPILE_QT5 "Compile Qt5 on Linux" OFF)
-option(LIBUI_COMPILE_GL "glArea support" ON)
+option(LIBUI_COMPILE_GL "glArea support" OFF)
 
 file(GLOB LIBUI_COMMON ABSOLUTE ${PROJECT_SOURCE_DIR} "common/*.c")
 list(FILTER LIBUI_COMMON EXCLUDE REGEX ".*OLD_table\\.c$")
